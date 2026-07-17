@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from PyInstaller.building.build_main import Analysis, PYZ, EXE, BUNDLE
 
 
-PACKAGE_NAME='Electrum.app'
+PACKAGE_NAME='Elektron Electrum.app'
 PYPKG='electrum'
 MAIN_SCRIPT='run_electrum'
 PROJECT_ROOT = os.path.abspath(".")

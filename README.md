@@ -1,15 +1,24 @@
-# Electrum - Lightweight Bitcoin client
+# Elektron Electrum - Lightweight Elektron Net (ELEK) client
+
+> **This is `elektron-net-electrum`, a permanently-diverged fork of
+> [`spesmilo/electrum`](https://github.com/spesmilo/electrum) (forked at
+> upstream v4.8.0) for [Elektron Net](https://github.com/kutlusoy/elektron-net)**
+> (Bech32 HRP `be`, SLIP-44 coin type 1370, `elektron-net-electrs` as the
+> server backend instead of Bitcoin Electrum servers). See
+> [`doc/elektron.md`](doc/elektron.md) for exactly what differs from
+> upstream and the conventions this fork follows. The rest of this
+> README is upstream's and refers to Bitcoin/Electrum unless noted.
 
 ```
 Licence: MIT Licence
-Author: Thomas Voegtlin
+Original author: Thomas Voegtlin (upstream Electrum)
+Fork maintained by: Elektron Net developers
 Language: Python (>= 3.10)
-Homepage: https://electrum.org/
+Upstream homepage: https://electrum.org/
+This fork: https://github.com/kutlusoy/elektron-net-electrum
 ```
 
-[![Build Status](https://github.com/spesmilo/electrum/actions/workflows/builds.yml/badge.svg?branch=master)](https://github.com/spesmilo/electrum/actions/workflows/builds.yml)
-[![Test coverage statistics](https://coveralls.io/repos/github/spesmilo/electrum/badge.svg?branch=master)](https://coveralls.io/github/spesmilo/electrum?branch=master)
-[![Help translate Electrum online](https://d322cqt584bo4o.cloudfront.net/electrum/localized.svg)](https://crowdin.com/project/electrum)
+[![Build Status](https://github.com/kutlusoy/elektron-net-electrum/actions/workflows/builds.yml/badge.svg?branch=main)](https://github.com/kutlusoy/elektron-net-electrum/actions/workflows/builds.yml)
 
 
 ## Getting started

@@ -11,22 +11,25 @@
 <component type="desktop-application">
   <id>org.electrum.electrum</id>
 
-  <name>Electrum</name>
-  <summary>Bitcoin Wallet</summary>
+  <name>Elektron Electrum</name>
+  <summary>Elektron Net (ELEK) Wallet</summary>
 
   <metadata_license>MIT</metadata_license>
   <project_license>MIT</project_license>
 
   <description>
     <p>
-      Electrum is a lightweight Bitcoin wallet focused on speed, with low resource usage and simplifying Bitcoin.
-      Startup times are instant because it operates in conjunction with high-performance servers that handle the most complicated parts of the Bitcoin system.
+      Elektron Electrum is a lightweight Elektron Net (ELEK) wallet focused on speed, with low resource usage.
+      It is a fork of Electrum (https://electrum.org/), adapted for Elektron Net's chain parameters (Bech32 HRP
+      "be", SLIP-44 coin type 1370); see https://github.com/kutlusoy/elektron-net for the underlying network.
+      Startup times are instant because it operates in conjunction with an elektron-net-electrs server that
+      handles the most complicated parts of the Elektron Net system.
     </p>
   </description>
 
-  <url type="homepage">https://www.electrum.org/</url>
-  <developer id="org.electrum">
-      <name>The Electrum developers</name>
+  <url type="homepage">https://github.com/kutlusoy/elektron-net-electrum</url>
+  <developer id="org.elektron-net">
+      <name>Elektron Net developers (fork of Electrum by the Electrum developers)</name>
   </developer>
 
   <launchable type="desktop-id">electrum.desktop</launchable>

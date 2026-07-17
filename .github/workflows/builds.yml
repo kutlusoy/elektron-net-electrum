@@ -1,6 +1,9 @@
 name: builds
 
 on:
+  push:
+    tags:
+      - 'v*'
   schedule:
     - cron: '30 2 * * *'   # 02:30 UTC daily
   workflow_dispatch:
@@ -61,7 +64,7 @@ jobs:
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
-          name: electrum-windows-${{ github.sha }}
+          name: elektron-electrum-windows-${{ github.sha }}
           path: contrib/build-wine/dist/*
           retention-days: ${{ env.ARTIFACT_RETENTION }}
           if-no-files-found: error
@@ -120,7 +123,7 @@ jobs:
       - name: Upload Android APK
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
-          name: electrum-android-${{ env.APK_ARCH }}-${{ github.sha }}
+          name: elektron-electrum-android-${{ env.APK_ARCH }}-${{ github.sha }}
           path: dist/*
           retention-days: ${{ env.ARTIFACT_RETENTION }}
           if-no-files-found: error
@@ -158,7 +161,7 @@ jobs:
       - name: Upload AppImage
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
-          name: electrum-appimage-${{ github.sha }}
+          name: elektron-electrum-appimage-${{ github.sha }}
           path: dist/*.AppImage
           retention-days: ${{ env.ARTIFACT_RETENTION }}
           if-no-files-found: error
@@ -175,10 +178,10 @@ jobs:
         include:
           - variant: full
             omit_unclean: '0'
-            artifact_name: electrum-tarball
+            artifact_name: elektron-electrum-tarball
           - variant: source-only
             omit_unclean: '1'
-            artifact_name: electrum-sourceonly-tarball
+            artifact_name: elektron-electrum-sourceonly-tarball
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
@@ -201,3 +204,45 @@ jobs:
           retention-days: ${{ env.ARTIFACT_RETENTION }}
           if-no-files-found: error
           compression-level: 0
+
+  # Only runs on a `v*` tag push (see `on.push.tags` above); the four build
+  # jobs above already run unconditionally in that case (their `if:` only
+  # restricts things on a manual workflow_dispatch). Collects every
+  # platform's artifact from this run and attaches them all to a single
+  # GitHub Release, per elektron-net-repo-conventions.md SS3.
+  release:
+    name: "release: GitHub Release"
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    needs: [windows, android, appimage, tarball]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53  # v6.0.0
+        with:
+          pattern: elektron-electrum-*-${{ github.sha }}
+          path: release-assets
+          merge-multiple: true
+
+      - name: List release assets
+        run: ls -lah release-assets/
+
+      - name: Determine prerelease flag
+        id: relflag
+        run: |
+          if [[ "${{ github.ref_name }}" == *-rc* ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65  # v2
+        with:
+          name: "Elektron Electrum ${{ github.ref_name }}"
+          prerelease: ${{ steps.relflag.outputs.prerelease }}
+          files: release-assets/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
