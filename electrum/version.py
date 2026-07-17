@@ -1,11 +1,14 @@
 # Elektron Electrum fork of Electrum, forked at upstream v4.8.0
-# (spesmilo/electrum). Own version lineage starting at 1.0.0 -- see
-# elektron-net-repo-conventions.md and doc/elektron.md -- so release tags
-# (v*) and filenames never collide with or imply parity with upstream's own
-# numbering.
+# (spesmilo/electrum). Own version lineage deliberately does NOT continue
+# upstream's numbering (see UPSTREAM_ELECTRUM_BASE_VERSION below for that) --
+# instead it starts at 4.0.4 to match elektron-net's own version at the time
+# of this initial release, marking the node version this wallet is known
+# compatible with. The two lineages are expected to diverge from here; this
+# is a starting marker, not a promise to keep the numbers in lockstep going
+# forward. See elektron-net-repo-conventions.md and doc/elektron.md.
 PRODUCT_NAME = 'Elektron Electrum'
 UPSTREAM_ELECTRUM_BASE_VERSION = '4.8.0'
-ELECTRUM_VERSION = '1.0.0'       # version of the client package
+ELECTRUM_VERSION = '4.0.4'       # version of the client package
 
 PROTOCOL_VERSION_MIN = '1.4'     # electrum protocol
 PROTOCOL_VERSION_MAX = '1.6'

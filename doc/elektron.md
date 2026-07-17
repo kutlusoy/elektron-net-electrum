@@ -93,9 +93,12 @@ designer pass would look better.
 ## Release automation
 
 `v*`-tag releases follow `elektron-net-repo-conventions.md` SS3: version is
-read from `electrum/version.py` (`ELECTRUM_VERSION`, restarted at `1.0.0`
-for this fork's own lineage rather than continuing upstream's `4.8.0`, to
-avoid implying version parity with real Electrum), and
+read from `electrum/version.py` (`ELECTRUM_VERSION`, set to `4.0.4` for this
+initial release rather than continuing upstream Electrum's `4.8.0` -- chosen
+to match `elektron-net`'s own version at the time of this release, marking
+the node version this wallet is known compatible with; the two lineages are
+expected to diverge from here on, this is a starting marker, not a promise
+to track each other going forward), and
 `softprops/action-gh-release` attaches every platform build (Windows,
 Android, AppImage, source tarball) to one GitHub Release per tag.
 
