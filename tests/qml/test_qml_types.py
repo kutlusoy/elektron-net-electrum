@@ -1,5 +1,6 @@
 import shutil
 import tempfile
+import unittest
 
 from electrum import SimpleConfig
 from electrum.gui.qml.qetypes import QEAmount
@@ -101,7 +102,7 @@ class TestTypes(QETestCase):
     @qt_test
     def test_qeamount_frominvoice(self):
         amount_sat = 10_000
-        outputs = [PartialTxOutput.from_address_and_value('bc1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqp8p2293', amount_sat)]
+        outputs = [PartialTxOutput.from_address_and_value('be1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqp26yrda', amount_sat)]
         invoice = Invoice(
             amount_msat=amount_sat * 1000,
             message="mymsg",
@@ -116,7 +117,7 @@ class TestTypes(QETestCase):
         self.assertEqual(10_000_000, a.msatsInt)
         self.assertFalse(a.isMax)
 
-        outputs = [PartialTxOutput.from_address_and_value('bc1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqp8p2293', '!')]
+        outputs = [PartialTxOutput.from_address_and_value('be1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqp26yrda', '!')]
         invoice = Invoice(
             amount_msat='!',
             message="mymsg",
@@ -131,6 +132,14 @@ class TestTypes(QETestCase):
         self.assertEqual(0, a.satsInt)
         self.assertEqual(0, a.msatsInt)
 
+    @unittest.skip(
+        "Uses a real Bitcoin-mainnet BOLT11 invoice (HRP 'bc'). Elektron Net has no "
+        "dedicated BOLT11 HRP decided yet (guideline-wallet-integration.md SS6 Phase 0, "
+        "placeholder BOLT11_HRP='be' in constants.py) and no Lightning network exists "
+        "on it yet -- see doc/elektron.md Open Items."
+    )
+    @qt_test
+    def test_qeamount_frominvoice_bolt11(self):
         bolt11 = 'lnbc20m1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqhp58yjmdan79s6qqdhdzgynm4zwqd5d7xmw5fk98klysy043l2ahrqsfpp3qjmp7lwpagxun9pygexvgpjdc4jdj85fr9yq20q82gphp2nflc7jtzrcazrra7wwgzxqc8u7754cdlpfrmccae92qgzqvzq2ps8pqqqqqqpqqqqq9qqqvpeuqafqxu92d8lr6fvg0r5gv0heeeqgcrqlnm6jhphu9y00rrhy4grqszsvpcgpy9qqqqqqgqqqqq7qqzqj9n4evl6mr5aj9f58zp6fyjzup6ywn3x6sk8akg5v4tgn2q8g4fhx05wf6juaxu9760yp46454gpg5mtzgerlzezqcqvjnhjh8z3g2qqdhhwkj'
         invoice = Invoice.from_bech32(bolt11)
         a = QEAmount(from_invoice=invoice)

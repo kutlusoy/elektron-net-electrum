@@ -1,5 +1,6 @@
 import os
 import json
+import unittest
 from typing import Dict, List
 
 from electrum import bitcoin
@@ -1040,6 +1041,13 @@ class TestLNUtil(ElectrumTestCase):
         self.assertFalse(f1.supports(LnFeatures.OPTION_STATIC_REMOTEKEY_OPT))
         self.assertFalse(f1.supports(LnFeatures.OPTION_TRAMPOLINE_ROUTING_REQ_ELECTRUM))
 
+    @unittest.skip(
+        "msg_without_prefix is a real captured Bitcoin-mainnet Lightning gossip "
+        "channel_update message; its embedded chain_hash is Bitcoin's genesis hash, "
+        "which _decode_channel_update_msg() correctly rejects since "
+        "constants.net.rev_genesis_bytes() is now Elektron Net's own genesis. "
+        "No Lightning network exists on Elektron Net yet -- see doc/elektron.md Open Items."
+    )
     def test_lnworker_decode_channel_update_msg(self):
         msg_without_prefix = bytes.fromhex("439b71c8ddeff63004e4ff1f9764a57dcf20232b79d9d669aef0e31c42be8e44208f7d868d0133acb334047f30e9399dece226ccd98e5df5330adf7f356290516fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d619000000000008762700054a00005ef2cf9c0101009000000000000003e80000000000000001000000002367b880")
         # good messages

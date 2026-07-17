@@ -154,8 +154,8 @@ class TestTransaction(ElectrumTestCase):
         estimated_output_size = transaction.Transaction.estimated_output_size_for_address
         self.assertEqual(estimated_output_size('14gcRovpkCoGkCNBivQBvw7eso7eiNAbxG'), 34)
         self.assertEqual(estimated_output_size('35ZqQJcBQMZ1rsv8aSuJ2wkC7ohUCQMJbT'), 32)
-        self.assertEqual(estimated_output_size('bc1q3g5tmkmlvxryhh843v4dz026avatc0zzr6h3af'), 31)
-        self.assertEqual(estimated_output_size('bc1qnvks7gfdu72de8qv6q6rhkkzu70fqz4wpjzuxjf6aydsx7wxfwcqnlxuv3'), 43)
+        self.assertEqual(estimated_output_size('be1q3g5tmkmlvxryhh843v4dz026avatc0zzwpec49'), 31)
+        self.assertEqual(estimated_output_size('be1qnvks7gfdu72de8qv6q6rhkkzu70fqz4wpjzuxjf6aydsx7wxfwcq49sc0z'), 43)
 
     # TODO other tests for segwit tx
     def test_tx_signed_segwit(self):
@@ -185,11 +185,11 @@ class TestTransaction(ElectrumTestCase):
 
         # bech32/bech32m native segwit
         # test vectors from BIP-0173/BIP-0350
-        self.assertEqual('bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4', addr_from_script('0014751e76e8199196d454941c45d1b3a323f1433bd6'))
-        self.assertEqual('bc1pw508d6qejxtdg4y5r3zarvary0c5xw7kw508d6qejxtdg4y5r3zarvary0c5xw7kt5nd6y', addr_from_script('5128751e76e8199196d454941c45d1b3a323f1433bd6751e76e8199196d454941c45d1b3a323f1433bd6'))
-        self.assertEqual('bc1sw50qgdz25j', addr_from_script('6002751e'))
-        self.assertEqual('bc1zw508d6qejxtdg4y5r3zarvaryvaxxpcs', addr_from_script('5210751e76e8199196d454941c45d1b3a323'))
-        self.assertEqual('bc1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqzk5jj0', addr_from_script('512079be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798'))
+        self.assertEqual('be1qw508d6qejxtdg4y5r3zarvary0c5xw7kpu8cre', addr_from_script('0014751e76e8199196d454941c45d1b3a323f1433bd6'))
+        self.assertEqual('be1pw508d6qejxtdg4y5r3zarvary0c5xw7kw508d6qejxtdg4y5r3zarvary0c5xw7knrp7px', addr_from_script('5128751e76e8199196d454941c45d1b3a323f1433bd6751e76e8199196d454941c45d1b3a323f1433bd6'))
+        self.assertEqual('be1sw50q9v6qeu', addr_from_script('6002751e'))
+        self.assertEqual('be1zw508d6qejxtdg4y5r3zarvaryvzva0f4', addr_from_script('5210751e76e8199196d454941c45d1b3a323'))
+        self.assertEqual('be1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqyvzk3u', addr_from_script('512079be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798'))
         # almost but not quite
         self.assertEqual(None, addr_from_script('0013751e76e8199196d454941c45d1b3a323f1433b'))
 
