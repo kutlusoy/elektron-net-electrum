@@ -680,16 +680,21 @@ def xor_bytes(a: bytes, b: bytes) -> bytes:
 
 
 def user_dir():
+    # Elektron Net fork: own data directory (".elektron-electrum" /
+    # "Elektron Electrum"), deliberately distinct from upstream Electrum's
+    # so both can be installed side-by-side without sharing wallet files --
+    # relevant here since legacy Base58 keys are valid on both chains
+    # (see elektron-net-repo-conventions.md SS1, guideline-wallet-integration.md SS4.4).
     if "ELECTRUMDIR" in os.environ:
         return os.environ["ELECTRUMDIR"]
     elif 'ANDROID_DATA' in os.environ:
         return android_data_dir()
     elif os.name == 'posix':
-        return os.path.join(os.environ["HOME"], ".electrum")
+        return os.path.join(os.environ["HOME"], ".elektron-electrum")
     elif "APPDATA" in os.environ:
-        return os.path.join(os.environ["APPDATA"], "Electrum")
+        return os.path.join(os.environ["APPDATA"], "Elektron Electrum")
     elif "LOCALAPPDATA" in os.environ:
-        return os.path.join(os.environ["LOCALAPPDATA"], "Electrum")
+        return os.path.join(os.environ["LOCALAPPDATA"], "Elektron Electrum")
     else:
         #raise Exception("No home directory found in environment variables.")
         return

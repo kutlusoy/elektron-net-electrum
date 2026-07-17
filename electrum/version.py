@@ -1,4 +1,11 @@
-ELECTRUM_VERSION = '4.8.0'       # version of the client package
+# Elektron Electrum fork of Electrum, forked at upstream v4.8.0
+# (spesmilo/electrum). Own version lineage starting at 1.0.0 -- see
+# elektron-net-repo-conventions.md and doc/elektron.md -- so release tags
+# (v*) and filenames never collide with or imply parity with upstream's own
+# numbering.
+PRODUCT_NAME = 'Elektron Electrum'
+UPSTREAM_ELECTRUM_BASE_VERSION = '4.8.0'
+ELECTRUM_VERSION = '1.0.0'       # version of the client package
 
 PROTOCOL_VERSION_MIN = '1.4'     # electrum protocol
 PROTOCOL_VERSION_MAX = '1.6'

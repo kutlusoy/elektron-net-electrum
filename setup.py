@@ -56,7 +56,7 @@ extras_require['fast'] = extras_require['crypto']
 
 
 setup(
-    name="Electrum",
+    name="Elektron-Electrum",
     version=version.ELECTRUM_VERSION,
     python_requires='>={}'.format(MIN_PYTHON_VERSION),
     install_requires=requirements,
@@ -73,10 +73,10 @@ setup(
     include_package_data=True,
     scripts=['electrum/electrum'],
     data_files=data_files,
-    description="Lightweight Bitcoin Wallet",
-    author="Thomas Voegtlin",
+    description="Lightweight Elektron Net (ELEK) wallet -- fork of Electrum",
+    author="Elektron Net developers (fork of Electrum by Thomas Voegtlin)",
     author_email="thomasv@electrum.org",
     license="MIT Licence",
-    url="https://electrum.org",
-    long_description="""Lightweight Bitcoin Wallet""",
+    url="https://github.com/kutlusoy/elektron-net-electrum",
+    long_description="""Elektron Electrum -- lightweight Elektron Net (ELEK) wallet, fork of Electrum""",
 )

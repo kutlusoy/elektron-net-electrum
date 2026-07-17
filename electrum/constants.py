@@ -56,9 +56,9 @@ def create_fallback_node_list(fallback_nodes_dict: dict[str, dict]) -> List[LNPe
     return fallback_nodes
 
 
-GIT_REPO_URL = "https://github.com/spesmilo/electrum"
-GIT_REPO_ISSUES_URL = "https://github.com/spesmilo/electrum/issues"
-RELEASE_NOTES_URL = "https://raw.githubusercontent.com/spesmilo/electrum/refs/heads/master/RELEASE-NOTES"
+GIT_REPO_URL = "https://github.com/kutlusoy/elektron-net-electrum"
+GIT_REPO_ISSUES_URL = "https://github.com/kutlusoy/elektron-net-electrum/issues"
+RELEASE_NOTES_URL = "https://raw.githubusercontent.com/kutlusoy/elektron-net-electrum/refs/heads/main/RELEASE-NOTES"
 BIP39_WALLET_FORMATS = read_json('bip39_wallet_formats.json')
 
 
@@ -144,17 +144,43 @@ class AbstractNet:
 
 
 class BitcoinMainnet(AbstractNet):
+    """Elektron Net mainnet (ELEK). Values are sourced from elektron-net's
+    src/kernel/chainparams.cpp (CMainParams) and src/wallet/walletutil.cpp
+    (GenerateWalletDescriptor) -- treat those as ground truth for any future
+    change here. See ../elektron-net-repo-conventions.md and doc/elektron.md.
+    """
 
     NET_NAME = "mainnet"
     TESTNET = False
     WIF_PREFIX = 0x80
     ADDRTYPE_P2PKH = 0
     ADDRTYPE_P2SH = 5
-    SEGWIT_HRP = "bc"
+    # Bech32 HRP is Elektron Net's own ("be1q.../be1p..."); WIF/P2PKH/P2SH
+    # bytes above are *intentionally* identical to Bitcoin mainnet (see
+    # guideline-wallet-integration.md SS2.1/SS4.4) -- legacy Base58 addresses
+    # and imported keys are valid on both chains. Any UI built on this fork
+    # MUST default to Bech32 receive addresses and warn on legacy import;
+    # not yet implemented here, tracked in elektron-net-repo-conventions.md.
+    SEGWIT_HRP = "be"
+    # No dedicated BOLT11 HRP has been decided yet for Elektron Net Lightning
+    # (guideline-wallet-integration.md SS6 Phase 0, open item); Lightning is out
+    # of scope for this milestone, so this is a placeholder, not a decision.
     BOLT11_HRP = SEGWIT_HRP
-    GENESIS = "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"
+    GENESIS = "00000006b054338443f1a5d5534df21eab0d13232028158ae198edbb169f9dad"
+    # DEFAULT_PORTS is Electrum's generic fallback (upstream default 't'/'s'
+    # pair), used when a servers.json entry omits its own port. The one
+    # live instance actually listed in chains/mainnet/servers.json,
+    # electrs.elektron-net.org, is configured in elektron-net-stack
+    # (install-elektron-stack.sh, electrs.toml template) with
+    # electrum_rpc_addr = "0.0.0.0:50002" -- note this is plaintext, not
+    # SSL, despite 50002 being the conventional SSL port number elsewhere;
+    # electrs itself never terminates TLS (see elektron-net-electrs/doc/
+    # config.md), so it is listed under the 't' key, not 's'.
     DEFAULT_PORTS = {'t': '50001', 's': '50002'}
-    BLOCK_HEIGHT_FIRST_LIGHTNING_CHANNELS = 497000
+    # No Lightning Network graph exists on Elektron Net yet (bootstrap
+    # problem, guideline SS3.3/Phase 3) -- 0 disables LN-channel-related
+    # historical scanning rather than implying a real activation height.
+    BLOCK_HEIGHT_FIRST_LIGHTNING_CHANNELS = 0
 
     XPRV_HEADERS = {
         'standard':    0x0488ade4,  # xprv
@@ -172,13 +198,20 @@ class BitcoinMainnet(AbstractNet):
         'p2wsh':       0x02aa7ed3,  # Zpub
     }
     XPUB_HEADERS_INV = inv_dict(XPUB_HEADERS)
-    BIP44_COIN_TYPE = 0
+    # Elektron Net's registered SLIP-44 coin type (symbol ELEK), replacing
+    # Bitcoin's 0'. See CHANGELOG-slip44-coin-type.md in elektron-net.
+    # IMPORTANT: wallets created before 2026-07-15 derive at the legacy 0'
+    # path and are NOT found by a default restore at this coin type -- a
+    # MUST-level requirement (guideline SS3.1) not yet automated here; until
+    # it is, restoring such a wallet requires manually specifying the 0'
+    # derivation path (e.g. m/84'/0'/0') on restore.
+    BIP44_COIN_TYPE = 1370
+    # No Lightning realm byte has been registered for Elektron Net; 0 is a
+    # placeholder (see BOLT11_HRP above), not a decision.
     LN_REALM_BYTE = 0
-    LN_DNS_SEEDS = [
-        'nodes.lightning.directory.',
-        'lseed.bitcoinstats.com.',
-        'lseed.darosior.ninja',
-    ]
+    # No Lightning routing/trampoline nodes exist on Elektron Net yet
+    # (guideline SS3.3/Phase 3 bootstrap problem).
+    LN_DNS_SEEDS = []
 
     @classmethod
     def datadir_subdir(cls):

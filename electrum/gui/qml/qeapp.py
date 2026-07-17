@@ -177,7 +177,7 @@ class QEAppController(BaseCrashReporter, QObject):
             global notification
             if not notification:
                 from plyer import notification
-            notification.notify('Electrum', message, app_icon=icon, app_name='Electrum')
+            notification.notify('Elektron Electrum', message, app_icon=icon, app_name='Elektron Electrum')
         except ImportError:
             self.logger.warning('Notification: needs plyer; `python3 -m pip install plyer`')
         except Exception as e:
