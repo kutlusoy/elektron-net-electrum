@@ -7,11 +7,17 @@ How tagging and the automated release build work in this repository.
 1. Bump `ELECTRUM_VERSION` in [`electrum/version.py`](../electrum/version.py),
    commit it.
 2. Tag that commit with a `v`-prefixed version, matching the version you
-   just set, and push the tag:
+   just set, and push the tag. Use an **annotated** tag (`-a` with a `-m`
+   message), not a lightweight one -- a release pointer is exactly the
+   case annotated tags are for: it becomes its own Git object with a
+   tagger, date, and message, instead of just a bare ref:
    ```
-   git tag v4.0.5
+   git tag -a v4.0.5 -m "Release v4.0.5"
    git push origin v4.0.5
    ```
+   (The build scripts call `git describe --tags`, which resolves either
+   kind of tag fine -- the `-a` is about having a real, documented
+   release object, not a build requirement.)
 3. That's it -- pushing a tag matching `v*` automatically triggers the
    [`builds`](workflows/builds.yml) workflow, which builds every platform
    and publishes a GitHub Release with all of them attached.
