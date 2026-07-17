@@ -18,16 +18,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Cheap gate job: job-level `if:` can't reference the secrets context
+  # directly ("Unrecognized named-value: 'secrets'"), so check for the
+  # token here and pass the result via `needs.*.outputs` instead. This is
+  # what lets security-review show up as skipped (grey) rather than
+  # failed (red) when CLAUDE_CODE_OAUTH_TOKEN isn't configured for this
+  # repo yet -- add it under Settings -> Secrets and variables -> Actions
+  # to enable the review without any further workflow changes.
+  check-token:
+    name: "security review: check for token"
+    runs-on: ubuntu-24.04
+    outputs:
+      has_token: ${{ steps.check.outputs.has_token }}
+    steps:
+      - name: Check for CLAUDE_CODE_OAUTH_TOKEN
+        id: check
+        env:
+          TOKEN_SET: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+        run: echo "has_token=$TOKEN_SET" >> "$GITHUB_OUTPUT"
+
   security-review:
     name: "security review: Claude Code"
+    needs: check-token
     runs-on: ubuntu-24.04
 
+    # Skip entirely if no token is configured (see check-token above).
     # Auto-run only for maintainers (and their forks).
     # External contributors trigger manually so we can first review if their PR modifies
     # the Python script this task calls (they could attempt to exfiltrate the api key through the script).
     if: |
-      github.event_name == 'workflow_dispatch' ||
-      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)
+      needs.check-token.outputs.has_token == 'true' &&
+      (github.event_name == 'workflow_dispatch' ||
+       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association))
 
     env:
       LD_LIBRARY_PATH: contrib/_saved_secp256k1_build/
