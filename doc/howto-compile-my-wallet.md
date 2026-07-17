@@ -1,34 +1,33 @@
-# Elektron Electrum selbst kompilieren -- Schritt-für-Schritt-Anleitung
+# Compiling Elektron Electrum Yourself -- Step-by-Step Guide
 
-Diese Anleitung richtet sich an Leute **ohne** Entwickler-Hintergrund, die
-sich ihre eigene Kopie von Elektron Electrum aus dem Quellcode bauen wollen,
-statt einer fertigen Datei zu vertrauen. Das ist optional -- wer den
-fertigen Download benutzen möchte, findet ihn unter
-[Releases](https://github.com/kutlusoy/elektron-net-electrum/releases) und
-kann diese Anleitung ignorieren.
+This guide is for people **without** a developer background who want to
+build their own copy of Elektron Electrum from source, instead of trusting
+a pre-built file. This is optional -- if you just want the ready-to-use
+download, grab it from
+[Releases](https://github.com/kutlusoy/elektron-net-electrum/releases) and
+you can skip this guide entirely.
 
-**Warum überhaupt selbst bauen?** Damit du nicht "blind" einer
-herunterladbaren `.exe`/`.apk`/`.dmg` vertrauen musst, sondern selbst
-prüfen kannst, dass daraus wirklich genau das entsteht, was im Quellcode
-dieses Repos steht.
+**Why build it yourself at all?** So you don't have to "blindly" trust a
+downloadable `.exe`/`.apk`/`.dmg` -- you can verify for yourself that it's
+built from exactly the source code in this repository.
 
-Diese Datei fasst die ausführlichere, entwicklerorientierte Original-
-Dokumentation (in `contrib/*/README*.md`, von Electrum übernommen) in
-einfachen Schritten zusammen. Bei Problemen lohnt sich ein Blick dort hinein
--- die Links stehen jeweils am Ende des Abschnitts.
+This file summarizes the more detailed, developer-oriented original
+documentation (in `contrib/*/README*.md`, inherited from Electrum) into
+simple steps. If you run into trouble, it's worth checking those out -- the
+links are at the end of each section.
 
-**Wichtig:** Es gibt für jedes Betriebssystem eine eigene Anleitung weiter
-unten -- du brauchst nur den Abschnitt für das System, für das du bauen
-willst (nicht zwingend das, auf dem du gerade sitzt, siehe Windows/Linux/
-Android unten: die laufen alle über Docker auf einem Linux-Rechner).
+**Important:** There's a separate section below for each operating system
+-- you only need the section for the system you want to build *for* (not
+necessarily the one you're sitting at right now -- see Windows/Linux/
+Android below: those all run through Docker on a Linux machine).
 
 ---
 
-## 0. Gemeinsamer erster Schritt: Quellcode herunterladen
+## 0. Common first step: get the source code
 
-Für **alle** Plattformen zuerst dasselbe: Git installieren (unter Linux z.B.
-`sudo apt-get install git`, unter macOS via `brew install git` oder Xcode-
-Tools) und den Quellcode holen:
+Same for **all** platforms first: install Git (on Linux e.g.
+`sudo apt-get install git`, on macOS via `brew install git` or the Xcode
+tools) and fetch the source code:
 
 ```
 git clone https://github.com/kutlusoy/elektron-net-electrum.git
@@ -36,20 +35,20 @@ cd elektron-net-electrum
 git checkout elektron-net-integration
 ```
 
-(`elektron-net-integration` ist der aktuelle Arbeits-Branch, bevor er in
-`main` gemerged wird -- falls du diese Anleitung später liest und `main`
-schon aktuell ist, kannst du den `git checkout`-Schritt weglassen.)
+(`elektron-net-integration` is the current working branch, before it's
+merged into `main` -- if you're reading this later and `main` is already
+up to date, you can skip the `git checkout` step.)
 
 ---
 
-## 1. Windows (.exe) bauen
+## 1. Building Windows (.exe)
 
-**Nicht** unter Windows selbst -- der Build läuft über Docker auf einem
-Linux-Rechner (oder Windows mit WSL2 + Ubuntu), der die Windows-Version
-"cross-kompiliert" (mit Wine). Das klingt ungewohnt, ist aber der offizielle
-und reproduzierbare Weg.
+**Not** done on Windows itself -- the build runs through Docker on a Linux
+machine (or Windows with WSL2 + Ubuntu), which "cross-compiles" the Windows
+version (using Wine). That sounds unusual, but it's the official and
+reproducible way to do it.
 
-1. **Docker installieren** (Ubuntu/Debian):
+1. **Install Docker** (Ubuntu/Debian):
    ```
    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
    sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
@@ -57,41 +56,41 @@ und reproduzierbare Weg.
    sudo apt-get install -y docker-ce
    sudo usermod -aG docker ${USER}
    ```
-   Danach einmal ab- und wieder anmelden (oder neu starten), damit die
-   Gruppenmitgliedschaft wirkt. Andere Linux-Distributionen: Docker über den
-   eigenen Paketmanager installieren, der Rest ist identisch.
+   Afterward, log out and back in (or reboot) once, so the group membership
+   takes effect. On other Linux distributions: install Docker through your
+   own package manager, the rest is identical.
 
-2. **Bauen:**
+2. **Build:**
    ```
    cd elektron-net-electrum/contrib/build-wine
    ./build.sh
    ```
-   Das dauert beim ersten Mal am längsten (Docker-Image wird gebaut,
-   danach wird es wiederverwendet).
+   This takes the longest the first time (the Docker image gets built;
+   after that it's reused).
 
-3. **Ergebnis:** liegt in `contrib/build-wine/dist/` als
-   `elektron-electrum-<version>-setup.exe` (Installer) und als portable
+3. **Result:** ends up in `contrib/build-wine/dist/` as
+   `elektron-electrum-<version>-setup.exe` (installer) and as a portable
    `.exe`.
 
-Details/Fehlersuche: [`contrib/build-wine/README.md`](../contrib/build-wine/README.md),
+Details/troubleshooting: [`contrib/build-wine/README.md`](../contrib/build-wine/README.md),
 [`contrib/docker_notes.md`](../contrib/docker_notes.md).
 
 ---
 
-## 2. Linux -- AppImage (läuft auf den meisten Linux-Distros ohne Installation)
+## 2. Linux -- AppImage (runs on most Linux distros with no installation)
 
-Gleiches Prinzip wie Windows, auch über Docker:
+Same principle as Windows, also via Docker:
 
-1. Docker installieren (siehe Schritt 1 oben, falls noch nicht geschehen).
+1. Install Docker (see step 1 above, if you haven't already).
 
-2. Bauen:
+2. Build:
    ```
    cd elektron-net-electrum/contrib/build-linux/appimage
    ./build.sh
    ```
 
-3. **Ergebnis:** liegt in `./dist/` als `elektron-electrum-*-x86_64.AppImage`.
-   Ausführbar machen und starten:
+3. **Result:** ends up in `./dist/` as `elektron-electrum-*-x86_64.AppImage`.
+   Make it executable and run it:
    ```
    chmod +x dist/elektron-electrum-*-x86_64.AppImage
    ./dist/elektron-electrum-*-x86_64.AppImage
@@ -101,125 +100,123 @@ Details: [`contrib/build-linux/appimage/README.md`](../contrib/build-linux/appim
 
 ---
 
-## 3. Linux -- direkt aus dem Quellcode starten (am einfachsten, kein Docker)
+## 3. Linux -- run directly from source (simplest, no Docker)
 
-Wenn du Elektron Electrum nur auf deinem eigenen Linux-Rechner benutzen
-willst (kein fertiges Installationspaket brauchst), ist das der schnellste
-Weg -- kein Docker nötig:
+If you just want to use Elektron Electrum on your own Linux machine (and
+don't need a packaged installer), this is the fastest route -- no Docker
+needed:
 
-1. **Abhängigkeiten installieren:**
+1. **Install dependencies:**
    ```
    sudo apt-get install python3-pip python3-pyqt6 libsecp256k1-dev
    ```
 
-2. **Installieren und starten:**
+2. **Install and run:**
    ```
    cd elektron-net-electrum
    python3 -m pip install --user -e ".[gui,crypto]"
    ./run_electrum
    ```
 
-Details: Haupt-[`README.md`](../README.md), Abschnitt "Development version
-(git clone)".
+Details: main [`README.md`](../README.md), "Development version (git
+clone)" section.
 
-### 3b. Linux -- Quellcode-Tarball bauen (für Weitergabe/Pakete)
+### 3b. Linux -- build a source tarball (for distribution/packaging)
 
-Falls du stattdessen ein `.tar.gz`-Paket erzeugen willst (z.B. um es
-weiterzugeben, nicht um es selbst direkt zu benutzen):
+If you instead want to produce a `.tar.gz` package (e.g. to hand it to
+someone else, rather than run it yourself directly):
 
 ```
 cd elektron-net-electrum/contrib/build-linux/sdist
 ./build.sh
 ```
 
-Ergebnis in `./dist/`. Details:
+Result in `./dist/`. Details:
 [`contrib/build-linux/sdist/README.md`](../contrib/build-linux/sdist/README.md).
 
 ---
 
-## 4. macOS (.dmg / .app) bauen
+## 4. Building macOS (.dmg / .app)
 
-Das geht **nur auf einem echten Mac** (kein Docker/Cross-Build möglich).
+This only works **on an actual Mac** (no Docker/cross-build possible).
 
-1. **[Homebrew](https://brew.sh/) installieren** (falls noch nicht
-   vorhanden) -- Anleitung auf der verlinkten Seite, ein Terminal-Befehl.
+1. **Install [Homebrew](https://brew.sh/)** (if not already installed) --
+   instructions on the linked page, a single terminal command.
 
-2. **Xcode-Kommandozeilentools** werden von Homebrew bei Bedarf automatisch
-   mitinstalliert.
+2. **Xcode command line tools** get installed automatically by Homebrew
+   when needed.
 
-3. **Bauen:**
+3. **Build:**
    ```
    cd elektron-net-electrum
    ./contrib/osx/make_osx.sh
    ```
 
-4. **Ergebnis:** ein Ordner `Elektron Electrum.app` sowie eine `.dmg`-Datei,
-   beide unsigniert (macOS zeigt beim ersten Start eine Warnung, dass die
-   App von einem "nicht verifizierten Entwickler" stammt -- normal bei
-   selbst gebauten, unsignierten Apps; über Rechtsklick -> "Öffnen"
-   bestätigen).
+4. **Result:** a folder `Elektron Electrum.app` plus a `.dmg` file, both
+   unsigned (macOS will show a warning on first launch that the app is from
+   an "unidentified developer" -- normal for self-built, unsigned apps;
+   confirm via right-click -> "Open").
 
-Details (inkl. Codesigning/Notarisierung für Fortgeschrittene):
+Details (including codesigning/notarization for advanced users):
 [`contrib/osx/README.md`](../contrib/osx/README.md),
-[`contrib/osx/README_macos.md`](../contrib/osx/README_macos.md) (Variante:
-direkt aus dem Quellcode starten statt eine `.app` zu bauen, analog zu
-Abschnitt 3 oben).
+[`contrib/osx/README_macos.md`](../contrib/osx/README_macos.md) (alternative:
+run directly from source instead of building a `.app`, similar to section 3
+above).
 
 ---
 
-## 5. Android (.apk) bauen
+## 5. Building Android (.apk)
 
-Auch hier: Docker auf einem Linux-Rechner, kein Android Studio nötig.
+Also Docker on a Linux machine here, no Android Studio needed.
 
-1. Docker installieren (siehe Schritt 1 oben).
+1. Install Docker (see step 1 above).
 
-2. **Bauen** (Debug-Version, zum Selbst-Testen -- am einfachsten):
+2. **Build** (debug version, for testing yourself -- the simplest option):
    ```
    cd elektron-net-electrum/contrib/android
    ./build.sh qml arm64-v8a debug
    ```
-   `arm64-v8a` passt für die allermeisten Android-Handys der letzten Jahre.
-   Falls dein Handy älter/anders ist: `armeabi-v7a` oder `x86_64` statt
-   `arm64-v8a` verwenden.
+   `arm64-v8a` fits the vast majority of Android phones from the last few
+   years. If your phone is older/different: use `armeabi-v7a` or `x86_64`
+   instead of `arm64-v8a`.
 
-3. **Ergebnis:** liegt in `./dist/` als
+3. **Result:** ends up in `./dist/` as
    `ElektronElectrum-*-arm64-v8a-debug.apk`.
 
-4. **Auf dem Handy installieren:** entweder die `.apk`-Datei manuell aufs
-   Handy kopieren und dort öffnen (Einstellungen -> "Installation aus
-   unbekannten Quellen erlauben" wird dafür einmalig verlangt), oder per
-   USB-Kabel mit [`adb`](https://developer.android.com/tools/adb) installiert:
+4. **Installing on your phone:** either copy the `.apk` file to your phone
+   manually and open it there (Settings -> "Allow installation from unknown
+   sources" needs to be enabled once for this), or install it over a USB
+   cable with [`adb`](https://developer.android.com/tools/adb):
    ```
    adb install -r dist/ElektronElectrum-*-arm64-v8a-debug.apk
    ```
 
-**Hinweis:** Debug-Builds sind mit einem provisorischen Schlüssel signiert.
-Wer eine App aus dem Play Store o.ä. verteilen will, braucht einen eigenen,
-sicher aufbewahrten Signierschlüssel (`release`-Modus) -- siehe die
-Detail-Doku für den fortgeschrittenen Weg.
+**Note:** Debug builds are signed with a provisional key. If you want to
+distribute an app through the Play Store or similar, you need your own,
+securely stored signing key (`release` mode) -- see the detailed docs for
+that advanced route.
 
 Details: [`contrib/android/Readme.md`](../contrib/android/Readme.md).
 
 ---
 
-## Häufige Probleme
+## Common problems
 
-- **"docker: permission denied"**: Du hast dich nach `usermod -aG docker`
-  noch nicht neu angemeldet/neu gestartet. Alternativ jeden Befehl mit
-  `sudo` voranstellen.
-- **Build bricht beim ersten Mal mit Netzwerkfehlern ab**: Die
-  Build-Skripte laden beim ersten Lauf einiges herunter (Docker-Images,
-  Abhängigkeiten) -- bei instabiler Verbindung einfach das Skript erneut
-  ausführen, bereits heruntergeladene Sachen werden zwischengespeichert.
-- **Windows/macOS zeigen eine Sicherheitswarnung beim ersten Start**: normal
-  bei selbst gebauten, unsignierten/unnotarisierten Programmen -- betrifft
-  nur die offiziellen Downloads unter
+- **"docker: permission denied"**: You haven't logged out/back in (or
+  rebooted) since `usermod -aG docker` yet. Alternatively, prefix every
+  command with `sudo`.
+- **Build fails with network errors the first time**: The build scripts
+  download a fair amount on the first run (Docker images, dependencies) --
+  if your connection is unstable, just re-run the script; anything already
+  downloaded gets cached.
+- **Windows/macOS show a security warning on first launch**: normal for
+  self-built, unsigned/unnotarized programs -- doesn't apply to the
+  official downloads under
   [Releases](https://github.com/kutlusoy/elektron-net-electrum/releases)
-  nicht (die sind signiert).
-- **Ich will prüfen, ob mein selbst gebauter Build zum offiziellen Release
-  passt ("reproducible build")**: möglich, aber fortgeschritten -- siehe
-  die Detail-Dokus der jeweiligen Plattform (Abschnitt "Verifying
-  reproducibility").
+  (those are signed).
+- **I want to check whether my self-built binary matches the official
+  release ("reproducible build")**: possible, but advanced -- see the
+  detailed docs for each platform ("Verifying reproducibility" section).
 
-Allgemeiner Hintergrund zu Elektron Net und was in diesem Fork gegenüber
-dem originalen Electrum verändert wurde: [`doc/elektron.md`](elektron.md).
+General background on Elektron Net and what this fork changes compared to
+original Electrum: [`doc/elektron.md`](elektron.md).
