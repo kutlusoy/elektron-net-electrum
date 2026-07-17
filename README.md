@@ -6,9 +6,7 @@
 > (Bech32 HRP `be`, SLIP-44 coin type 1370, `elektron-net-electrs` as the
 > server backend instead of Bitcoin Electrum servers). See
 > [`doc/elektron.md`](doc/elektron.md) for exactly what differs from
-> upstream, and
-> [`elektron-net-repo-conventions.md`](elektron-net-repo-conventions.md) for
-> the conventions this fork (and its siblings) follow. The rest of this
+> upstream and the conventions this fork follows. The rest of this
 > README is upstream's and refers to Bitcoin/Electrum unless noted.
 
 ```

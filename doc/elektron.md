@@ -8,9 +8,12 @@ documents only what is actually implemented here; the full design rationale
 and phased plan live in the elektron-net repo:
 [`doc-elektron/guideline-wallet-integration.md`](https://github.com/kutlusoy/elektron-net/blob/main/doc-elektron/guideline-wallet-integration.md).
 
-See also [`elektron-net-repo-conventions.md`](../elektron-net-repo-conventions.md)
-for the conventions applied across this fork and its siblings
-(`elektron-net-electrs`, etc.).
+The conventions applied here follow the precedent set by this family's
+other third-party forks (`elektron-net-electrs` in particular): permanent,
+explicitly-labeled fork with a link back to the design rationale; upstream
+`LICENCE`/`AUTHORS` preserved unmodified; a `doc/elektron.md` covering only
+what's actually implemented; `v*`-tag-triggered releases via
+`softprops/action-gh-release`.
 
 ## Chain parameters (`electrum/constants.py`, `BitcoinMainnet`)
 
@@ -67,7 +70,7 @@ specifying the legacy derivation path (e.g. `m/84'/0'/0'`) in Electrum's
 Display name is "Elektron Electrum" throughout (window titles, About
 dialog, desktop entry, AppStream metainfo, Windows installer
 `PRODUCT_NAME`, Android `title`/`package.name`/`package.domain`, macOS
-`.app` bundle name). Per `elektron-net-repo-conventions.md`, the
+`.app` bundle name). Following this fork family's convention, the
 **underlying Python package (`electrum`), CLI script (`electrum/electrum`),
 and `bitcoin:`/`lightning:` URI scheme handlers are unchanged** -- renaming
 those would be a much larger, riskier change (URI parsing, packaging
@@ -92,7 +95,7 @@ designer pass would look better.
 
 ## Release automation
 
-`v*`-tag releases follow `elektron-net-repo-conventions.md` SS3: version is
+`v*`-tag releases follow this fork family's release convention: version is
 read from `electrum/version.py` (`ELECTRUM_VERSION`, set to `4.0.4` for this
 initial release rather than continuing upstream Electrum's `4.8.0` -- chosen
 to match `elektron-net`'s own version at the time of this release, marking

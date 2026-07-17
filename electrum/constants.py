@@ -147,7 +147,7 @@ class BitcoinMainnet(AbstractNet):
     """Elektron Net mainnet (ELEK). Values are sourced from elektron-net's
     src/kernel/chainparams.cpp (CMainParams) and src/wallet/walletutil.cpp
     (GenerateWalletDescriptor) -- treat those as ground truth for any future
-    change here. See ../elektron-net-repo-conventions.md and doc/elektron.md.
+    change here. See doc/elektron.md.
     """
 
     NET_NAME = "mainnet"
@@ -160,7 +160,7 @@ class BitcoinMainnet(AbstractNet):
     # guideline-wallet-integration.md SS2.1/SS4.4) -- legacy Base58 addresses
     # and imported keys are valid on both chains. Any UI built on this fork
     # MUST default to Bech32 receive addresses and warn on legacy import;
-    # not yet implemented here, tracked in elektron-net-repo-conventions.md.
+    # not yet implemented here, tracked in doc/elektron.md.
     SEGWIT_HRP = "be"
     # No dedicated BOLT11 HRP has been decided yet for Elektron Net Lightning
     # (guideline-wallet-integration.md SS6 Phase 0, open item); Lightning is out

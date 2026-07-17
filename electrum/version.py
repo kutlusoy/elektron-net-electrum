@@ -5,7 +5,7 @@
 # of this initial release, marking the node version this wallet is known
 # compatible with. The two lineages are expected to diverge from here; this
 # is a starting marker, not a promise to keep the numbers in lockstep going
-# forward. See elektron-net-repo-conventions.md and doc/elektron.md.
+# forward. See doc/elektron.md.
 PRODUCT_NAME = 'Elektron Electrum'
 UPSTREAM_ELECTRUM_BASE_VERSION = '4.8.0'
 ELECTRUM_VERSION = '4.0.4'       # version of the client package

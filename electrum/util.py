@@ -684,7 +684,7 @@ def user_dir():
     # "Elektron Electrum"), deliberately distinct from upstream Electrum's
     # so both can be installed side-by-side without sharing wallet files --
     # relevant here since legacy Base58 keys are valid on both chains
-    # (see elektron-net-repo-conventions.md SS1, guideline-wallet-integration.md SS4.4).
+    # (see doc/elektron.md, guideline-wallet-integration.md SS4.4).
     if "ELECTRUMDIR" in os.environ:
         return os.environ["ELECTRUMDIR"]
     elif 'ANDROID_DATA' in os.environ:
