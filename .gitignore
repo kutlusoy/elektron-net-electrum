@@ -6,6 +6,7 @@ build/
 dist/
 *.egg/
 Electrum.egg-info/
+Elektron_Electrum.egg-info/
 .devlocaltmp/
 *_trial_temp
 packages

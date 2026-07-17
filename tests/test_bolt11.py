@@ -20,6 +20,13 @@ CONVERSION_RATE=1200
 PRIVKEY=unhexlify('e126f68f7eafcc8b74f54d269fe206be715000f94dac067d1c04a8ca3b2db734')
 PUBKEY=unhexlify('03e7156ae33b0a208d0744199163177e909e80176e55d97a2f221ede0f934dd9ad')
 
+# Elektron Net has no dedicated BOLT11 HRP decided yet
+# (guideline-wallet-integration.md SS6 Phase 0, placeholder BOLT11_HRP='be' in
+# constants.py) and no Lightning network exists on it yet -- see
+# doc/elektron.md Open Items. Tests below decode real Bitcoin-mainnet BOLT11
+# invoices (HRP 'bc') against the default (Elektron) net.
+_BOLT11_HRP_SKIP_REASON = "Uses real Bitcoin-mainnet BOLT11 invoices (HRP 'bc'); see comment above."
+
 
 class TestBolt11(ElectrumTestCase):
     def test_shorten_amount(self):
@@ -59,6 +66,7 @@ class TestBolt11(ElectrumTestCase):
 
         assert a.__dict__ == b.__dict__, (pprint.pformat([a.__dict__, b.__dict__]))
 
+    @unittest.skip(_BOLT11_HRP_SKIP_REASON)
     def test_roundtrip(self):
         longdescription = ('One piece of chocolate cake, one icecream cone, one'
                           ' pickle, one slice of swiss cheese, one slice of salami,'
@@ -155,16 +163,19 @@ class TestBolt11(ElectrumTestCase):
             invoice = encode_bolt11_invoice(lnaddr, PRIVKEY)
             self.assertEqual(cltv, decode_bolt11_invoice(invoice).get_min_final_cltv_delta())
 
+    @unittest.skip(_BOLT11_HRP_SKIP_REASON)
     def test_features(self):
         lnaddr = decode_bolt11_invoice("lnbc25m1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygsdq5vdhkven9v5sxyetpdees9qypqsztrz5v3jfnxskfv7g8chmyzyrfhf2vupcavuq5rce96kyt6g0zh337h206awccwp335zarqrud4wccgdn39vur44d8um4hmgv06aj0sgpdrv73z")
         self.assertEqual(33282, lnaddr.get_tag('9'))
         self.assertEqual(LnFeatures(33282), lnaddr.get_features())
 
+    @unittest.skip(_BOLT11_HRP_SKIP_REASON)
     def test_payment_secret(self):
         lnaddr = decode_bolt11_invoice("lnbc25m1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygsdq5vdhkven9v5sxyetpdees9q5sqqqqqqqqqqqqqqqpqsqvvh7ut50r00p3pg34ea68k7zfw64f8yx9jcdk35lh5ft8qdr8g4r0xzsdcrmcy9hex8un8d8yraewvhqc9l0sh8l0e0yvmtxde2z0hgpzsje5l")
         self.assertEqual((1 << 9) + (1 << 15) + (1 << 99), lnaddr.get_tag('9'))
         self.assertEqual(b"\x11" * 32, lnaddr.payment_secret)
 
+    @unittest.skip(_BOLT11_HRP_SKIP_REASON)
     def test_validate_and_compare_features(self):
         lnaddr = decode_bolt11_invoice("lnbc25m1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygsdq5vdhkven9v5sxyetpdees9q5sqqqqqqqqqqqqqqqpqsqvvh7ut50r00p3pg34ea68k7zfw64f8yx9jcdk35lh5ft8qdr8g4r0xzsdcrmcy9hex8un8d8yraewvhqc9l0sh8l0e0yvmtxde2z0hgpzsje5l")
         lnaddr.validate_and_compare_features(LnFeatures((1 << 8) + (1 << 14) + (1 << 15)))

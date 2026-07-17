@@ -1,5 +1,6 @@
 import os
 import asyncio
+import unittest
 from unittest.mock import patch
 
 from electrum import SimpleConfig
@@ -67,6 +68,12 @@ class TestPaymentIdentifier(ElectrumTestCase):
         with self.assertRaises(AssertionError):
             remove_uri_prefix(data=1234, prefix="test")
 
+    @unittest.skip(
+        "Uses real Bitcoin-mainnet BOLT11 invoices (HRP 'bc'). Elektron Net has no "
+        "dedicated BOLT11 HRP decided yet (guideline-wallet-integration.md SS6 Phase 0, "
+        "placeholder BOLT11_HRP='be' in constants.py) and no Lightning network exists "
+        "on it yet -- see doc/elektron.md Open Items."
+    )
     def test_bolt11(self):
         # no amount, no fallback address
         bolt11 = 'lnbc1ps9zprzpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygsdqq9qypqszpyrpe4tym8d3q87d43cgdhhlsrt78epu7u99mkzttmt2wtsx0304rrw50addkryfrd3vn3zy467vxwlmf4uz7yvntuwjr2hqjl9lw5cqwtp2dy'
@@ -110,7 +117,7 @@ class TestPaymentIdentifier(ElectrumTestCase):
         self.assertFalse(pi.is_multiline())
 
     def test_bip21(self):
-        bip21 = 'bitcoin:bc1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqp8p2293?message=unit_test'
+        bip21 = 'bitcoin:be1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqp26yrda?message=unit_test'
         for pi_str in [
             f'{bip21}',
             f'  {bip21}',
@@ -124,7 +131,7 @@ class TestPaymentIdentifier(ElectrumTestCase):
             self.assertIsNotNone(pi.bip21)
 
         # amount, expired, message
-        bip21 = 'bitcoin:bc1qy7ps80x5csdqpfcekn97qfljxtg2lrya8826ds?amount=0.001&message=unit_test&time=1707382023&exp=3600'
+        bip21 = 'bitcoin:be1qy7ps80x5csdqpfcekn97qfljxtg2lrya2uyn9u?amount=0.001&message=unit_test&time=1707382023&exp=3600'
 
         pi = PaymentIdentifier(None, bip21)
         self.assertTrue(pi.is_available())
@@ -135,6 +142,27 @@ class TestPaymentIdentifier(ElectrumTestCase):
         self.assertTrue(pi.has_expired())
         self.assertEqual('unit_test', pi.bip21.get('message'))
 
+        # amount bounds
+        bip21 = 'bitcoin:1RustyRX2oai4EYYDpQGWvEL62BBGqN9T?amount=-1'
+        pi = PaymentIdentifier(None, bip21)
+        self.assertFalse(pi.is_valid())
+
+        bip21 = 'bitcoin:1RustyRX2oai4EYYDpQGWvEL62BBGqN9T?amount=21000001'
+        pi = PaymentIdentifier(None, bip21)
+        self.assertFalse(pi.is_valid())
+
+        bip21 = 'bitcoin:1RustyRX2oai4EYYDpQGWvEL62BBGqN9T?amount=0'
+        pi = PaymentIdentifier(None, bip21)
+        self.assertFalse(pi.is_valid())
+
+    @unittest.skip(
+        "Uses real Bitcoin-mainnet BOLT11 invoices (HRP 'bc'). Elektron Net has no "
+        "dedicated BOLT11 HRP decided yet (guideline-wallet-integration.md SS6 Phase 0, "
+        "placeholder BOLT11_HRP='be' in constants.py) and no Lightning network exists "
+        "on it yet -- see doc/elektron.md Open Items. Not a bug in the onchain BIP21 "
+        "handling exercised by test_bip21 above."
+    )
+    def test_bip21_with_lightning(self):
         # amount, expired, message, lightning w matching amount
         bip21 = 'bitcoin:1RustyRX2oai4EYYDpQGWvEL62BBGqN9T?amount=0.02&message=unit_test&time=1707382023&exp=3600&lightning=lnbc20m1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqhp58yjmdan79s6qqdhdzgynm4zwqd5d7xmw5fk98klysy043l2ahrqsfpp3qjmp7lwpagxun9pygexvgpjdc4jdj85fr9yq20q82gphp2nflc7jtzrcazrra7wwgzxqc8u7754cdlpfrmccae92qgzqvzq2ps8pqqqqqqpqqqqq9qqqvpeuqafqxu92d8lr6fvg0r5gv0heeeqgcrqlnm6jhphu9y00rrhy4grqszsvpcgpy9qqqqqqgqqqqq7qqzqj9n4evl6mr5aj9f58zp6fyjzup6ywn3x6sk8akg5v4tgn2q8g4fhx05wf6juaxu9760yp46454gpg5mtzgerlzezqcqvjnhjh8z3g2qqdhhwkj'
 
@@ -151,19 +179,6 @@ class TestPaymentIdentifier(ElectrumTestCase):
         # amount, expired, message, lightning w non-matching amount
         bip21 = 'bitcoin:1RustyRX2oai4EYYDpQGWvEL62BBGqN9T?amount=0.01&message=unit_test&time=1707382023&exp=3600&lightning=lnbc20m1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqhp58yjmdan79s6qqdhdzgynm4zwqd5d7xmw5fk98klysy043l2ahrqsfpp3qjmp7lwpagxun9pygexvgpjdc4jdj85fr9yq20q82gphp2nflc7jtzrcazrra7wwgzxqc8u7754cdlpfrmccae92qgzqvzq2ps8pqqqqqqpqqqqq9qqqvpeuqafqxu92d8lr6fvg0r5gv0heeeqgcrqlnm6jhphu9y00rrhy4grqszsvpcgpy9qqqqqqgqqqqq7qqzqj9n4evl6mr5aj9f58zp6fyjzup6ywn3x6sk8akg5v4tgn2q8g4fhx05wf6juaxu9760yp46454gpg5mtzgerlzezqcqvjnhjh8z3g2qqdhhwkj'
 
-        pi = PaymentIdentifier(None, bip21)
-        self.assertFalse(pi.is_valid())
-
-        # amount bounds
-        bip21 = 'bitcoin:1RustyRX2oai4EYYDpQGWvEL62BBGqN9T?amount=-1'
-        pi = PaymentIdentifier(None, bip21)
-        self.assertFalse(pi.is_valid())
-
-        bip21 = 'bitcoin:1RustyRX2oai4EYYDpQGWvEL62BBGqN9T?amount=21000001'
-        pi = PaymentIdentifier(None, bip21)
-        self.assertFalse(pi.is_valid())
-
-        bip21 = 'bitcoin:1RustyRX2oai4EYYDpQGWvEL62BBGqN9T?amount=0'
         pi = PaymentIdentifier(None, bip21)
         self.assertFalse(pi.is_valid())
 
@@ -287,8 +302,8 @@ class TestPaymentIdentifier(ElectrumTestCase):
 
     def test_multiline(self):
         pi_str = '\n'.join([
-            'bc1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqp8p2293,0.01',
-            'bc1q66ex4c3vek4cdmrfjxtssmtguvs3r30pf42jpj,0.01',
+            'be1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqp26yrda,0.01',
+            'be1q66ex4c3vek4cdmrfjxtssmtguvs3r30pywymf7,0.01',
         ])
         pi = PaymentIdentifier(self.wallet, pi_str)
         self.assertTrue(pi.is_valid())
@@ -301,9 +316,9 @@ class TestPaymentIdentifier(ElectrumTestCase):
         self.assertEqual(1000, pi.multiline_outputs[1].value)
 
         pi_str = '\n'.join([
-            'bc1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqp8p2293,0.01',
-            'bc1q66ex4c3vek4cdmrfjxtssmtguvs3r30pf42jpj,0.01',
-            'bc1qy7ps80x5csdqpfcekn97qfljxtg2lrya8826ds,!',
+            'be1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqp26yrda,0.01',
+            'be1q66ex4c3vek4cdmrfjxtssmtguvs3r30pywymf7,0.01',
+            'be1qy7ps80x5csdqpfcekn97qfljxtg2lrya2uyn9u,!',
         ])
         pi = PaymentIdentifier(self.wallet, pi_str)
         self.assertTrue(pi.is_valid())
@@ -317,9 +332,9 @@ class TestPaymentIdentifier(ElectrumTestCase):
         self.assertEqual('!', pi.multiline_outputs[2].value)
 
         pi_str = '\n'.join([
-            'bc1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqp8p2293,0.01',
-            'bc1q66ex4c3vek4cdmrfjxtssmtguvs3r30pf42jpj,2!',
-            'bc1qy7ps80x5csdqpfcekn97qfljxtg2lrya8826ds,3!',
+            'be1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqp26yrda,0.01',
+            'be1q66ex4c3vek4cdmrfjxtssmtguvs3r30pywymf7,2!',
+            'be1qy7ps80x5csdqpfcekn97qfljxtg2lrya2uyn9u,3!',
         ])
         pi = PaymentIdentifier(self.wallet, pi_str)
         self.assertTrue(pi.is_valid())
@@ -333,7 +348,7 @@ class TestPaymentIdentifier(ElectrumTestCase):
         self.assertEqual('3!', pi.multiline_outputs[2].value)
 
         pi_str = '\n'.join([
-            'bc1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqp8p2293,0.01',
+            'be1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqp26yrda,0.01',
             'script(OP_RETURN baddc0ffee),0'
         ])
         pi = PaymentIdentifier(self.wallet, pi_str)
@@ -346,7 +361,7 @@ class TestPaymentIdentifier(ElectrumTestCase):
         self.assertEqual(0, pi.multiline_outputs[1].value)
 
     def test_spk(self):
-        address = 'bc1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqp8p2293'
+        address = 'be1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqp26yrda'
         for pi_str in [
             f'{address}',
             f'  {address}',
@@ -402,6 +417,12 @@ class TestPaymentIdentifier(ElectrumTestCase):
             self.assertFalse(pi.is_available())
             self.assertTrue(pi.need_resolve())
 
+    @unittest.skip(
+        "Uses real Bitcoin-mainnet BOLT11 invoices (HRP 'bc'). Elektron Net has no "
+        "dedicated BOLT11 HRP decided yet (guideline-wallet-integration.md SS6 Phase 0, "
+        "placeholder BOLT11_HRP='be' in constants.py) and no Lightning network exists "
+        "on it yet -- see doc/elektron.md Open Items."
+    )
     async def test_invoice_from_payment_identifier(self):
         # amount, expired, message, lightning w matching amount
         bip21 = 'bitcoin:1RustyRX2oai4EYYDpQGWvEL62BBGqN9T?amount=0.02&message=unit_test&time=1707382023&exp=3600&lightning=lnbc20m1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqhp58yjmdan79s6qqdhdzgynm4zwqd5d7xmw5fk98klysy043l2ahrqsfpp3qjmp7lwpagxun9pygexvgpjdc4jdj85fr9yq20q82gphp2nflc7jtzrcazrra7wwgzxqc8u7754cdlpfrmccae92qgzqvzq2ps8pqqqqqqpqqqqq9qqqvpeuqafqxu92d8lr6fvg0r5gv0heeeqgcrqlnm6jhphu9y00rrhy4grqszsvpcgpy9qqqqqqgqqqqq7qqzqj9n4evl6mr5aj9f58zp6fyjzup6ywn3x6sk8akg5v4tgn2q8g4fhx05wf6juaxu9760yp46454gpg5mtzgerlzezqcqvjnhjh8z3g2qqdhhwkj'
