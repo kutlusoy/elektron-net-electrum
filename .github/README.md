@@ -12,8 +12,12 @@ How tagging and the automated release build work in this repository.
    case annotated tags are for: it becomes its own Git object with a
    tagger, date, and message, instead of just a bare ref:
    ```
-   git tag -a v4.0.5 -m "Release v4.0.5"
-   git push origin v4.0.5
+   git tag -a v4.0.4 -m "Release v4.0.4"
+   git push origin v4.0.4
+   
+   Entfenen
+   git tag -d v4.0.4 && git push origin :v4.0.4 
+  
    ```
    (The build scripts call `git describe --tags`, which resolves either
    kind of tag fine -- the `-a` is about having a real, documented
