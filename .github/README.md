@@ -15,7 +15,7 @@ How tagging and the automated release build work in this repository.
    git tag -a v4.0.4 -m "Release v4.0.4"
    git push origin v4.0.4
    
-   Entfenen
+   Entfernen
    git tag -d v4.0.4 && git push origin :v4.0.4 
   
    ```
