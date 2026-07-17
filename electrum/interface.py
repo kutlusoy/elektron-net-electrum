@@ -76,7 +76,14 @@ ca_path = certifi.where()
 BUCKET_NAME_OF_ONION_SERVERS = 'onion'
 
 KNOWN_ELEC_PROTOCOL_TRANSPORTS = {'t', 's'}
-PREFERRED_NETWORK_PROTOCOL = 's'
+# Elektron Net fork: electrs.elektron-net.org currently only serves the
+# plaintext Electrum protocol (port 50002, "t" in chains/mainnet/servers.json)
+# -- no SSL/TLS endpoint exists yet. Network._set_default_server() and the
+# server-discovery/reconnect logic in network.py filter candidate servers by
+# this protocol, so preferring "s" here would leave zero eligible servers and
+# crash on every startup. Revisit once electrs.elektron-net.org gets an SSL
+# endpoint (see doc/elektron.md).
+PREFERRED_NETWORK_PROTOCOL = 't'
 assert PREFERRED_NETWORK_PROTOCOL in KNOWN_ELEC_PROTOCOL_TRANSPORTS
 
 MAX_NUM_HEADERS_PER_REQUEST = 2016
