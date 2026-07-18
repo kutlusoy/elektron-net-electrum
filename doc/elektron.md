@@ -245,6 +245,21 @@ Android, AppImage, source tarball) to one GitHub Release per tag.
   `BOLT11_HRP` here is a placeholder equal to `SEGWIT_HRP`. No Lightning
   routing/trampoline nodes exist on Elektron Net yet, so this is out of
   scope for this milestone regardless.
+- **`TRAMPOLINE_NODES_MAINNET` (`electrum/trampoline.py`) is intentionally
+  empty**, for the same reason as `fallback_lnnodes.json`: upstream's
+  hardcoded entries (ACINQ, `lightning.electrum.org`, hodlisterco) are all
+  real Bitcoin mainnet nodes with a different `chain_hash`. Leaving them in
+  caused a confirmed live failure -- opening a channel auto-suggested
+  `lightning.electrum.org`, which correctly rejected the connection with
+  "no common chain found with remote" (the node is doing its job; it's
+  genuinely a different chain). `suggest_peer()` (`lnworker.py`) was made
+  to return `None` when the hardcoded list is empty, rather than crash on
+  `random.choice([])`. **When a real Elektron Net trampoline/routing node
+  exists, add it as a new entry to `TRAMPOLINE_NODES_MAINNET`** (same
+  `LNPeerAddr(host=..., port=..., pubkey=...)` shape upstream uses) --
+  don't assume there will only ever be one; the dict already supports
+  multiple entries (see the real Bitcoin-mainnet dict this replaced, which
+  had three).
 - **Testnet/regtest/signet chain parameters:** only `BitcoinMainnet` has
   been forked so far; `BitcoinTestnet` and friends still carry real Bitcoin
   testnet parameters. Selecting `--testnet` today produces a client that

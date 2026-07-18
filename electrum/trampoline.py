@@ -27,11 +27,16 @@ _logger = get_logger(__name__)
 
 # hardcoded list
 # TODO for some pubkeys, there are multiple network addresses we could try
-TRAMPOLINE_NODES_MAINNET = {
-    'ACINQ':                  LNPeerAddr(host='node.acinq.co',           port=9735, pubkey=bytes.fromhex('03864ef025fde8fb587d989186ce6a4a186895ee44a926bfc370e2c366597a3f8f')),
-    'Electrum trampoline':    LNPeerAddr(host='lightning.electrum.org',  port=9740, pubkey=bytes.fromhex('03ecef675be448b615e6176424070673ef8284e0fd19d8be062a6cb5b130a0a0d1')),
-    'trampoline hodlisterco': LNPeerAddr(host='trampoline.hodlister.co', port=9740, pubkey=bytes.fromhex('02ce014625788a61411398f83c945375663972716029ef9d8916719141dc109a1c')),
-}
+# Elektron Net fork: intentionally empty. Upstream's hardcoded trampoline
+# nodes (ACINQ, lightning.electrum.org, hodlisterco) are all real Bitcoin
+# mainnet nodes with a different chain_hash -- connecting to them fails
+# with "no common chain found with remote" (confirmed live). No real
+# Elektron Net trampoline/routing node exists yet (see doc/elektron.md,
+# "no real Lightning routing/trampoline nodes exist on the network at
+# all"); leaving stale Bitcoin-mainnet entries here would just make the
+# channel-opening flow suggest peers guaranteed to fail. See
+# suggest_peer() in lnworker.py, which handles this being empty.
+TRAMPOLINE_NODES_MAINNET = {}
 
 TRAMPOLINE_NODES_TESTNET = {
     'endurance': LNPeerAddr(host='34.250.234.192', port=9735, pubkey=bytes.fromhex('03933884aaf1d6b108397e5efe5c86bcf2d8ca8d2f700eda99db9214fc2712b134')),
