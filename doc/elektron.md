@@ -153,3 +153,15 @@ Android, AppImage, source tarball) to one GitHub Release per tag.
   jump-starting from a trusted point); populating it with real Elektron Net
   checkpoints is a possible future optimization, not a correctness
   requirement.
+- **`electrum/currencies.json` is stale (bundled cache, upstream data):**
+  `electrum/exchange_rate.py`'s fiat-rate providers were repointed from BTC
+  to ELEK trading pairs (none of these real third-party exchanges actually
+  list ELEK, so this mostly just means "return nothing" instead of "return
+  a real Bitcoin price mislabeled as an ELEK price" -- see the comment at
+  the top of that file). `currencies.json` is a pre-generated cache of
+  which fiat currencies each provider supports, built from real upstream
+  Bitcoin listings; it wasn't regenerated (would require live network
+  calls to ~20 exchanges) so it's now out of sync with the new queries --
+  the currency dropdown may offer currencies that then return no rate.
+  Not dangerous (no wrong price shown), just a minor UI inconsistency
+  until it's regenerated or cleared.

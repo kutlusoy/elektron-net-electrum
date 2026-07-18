@@ -42,6 +42,12 @@ SPOT_RATE_CLOSE_TO_STALE = 450      # try harder to fetch an update if price is 
 SPOT_RATE_EXPIRY = 600              # spot price becomes stale after 10 minutes -> we no longer show/use it
 
 
+# Elektron Net fork: every provider below queries a real, unrelated
+# third-party exchange for a BTC/XBT/bitcoin market pair. None of them list
+# ELEK, so these calls are expected to return empty/error results until
+# Elektron Net gets a real listing somewhere -- that's intentional (see
+# doc/elektron.md): showing a wrong, misleadingly-labeled *Bitcoin* price as
+# if it were an ELEK price would be worse than showing no fiat rate at all.
 class ExchangeBase(Logger):
 
     def __init__(self, on_quotes, on_history):
@@ -206,7 +212,7 @@ class ExchangeBase(Logger):
 
     def get_cached_spot_quote(self, ccy: str) -> Decimal:
         """Returns the cached exchange rate as a Decimal"""
-        if ccy == 'BTC':
+        if ccy == 'ELEK':
             return Decimal(1)
         rate = self._quotes.get(ccy)
         if not rate:  # don't return 0 to prevent DivisionByZero exceptions
@@ -224,7 +230,7 @@ class Yadio(ExchangeBase):
         return list(dicts.keys())
 
     async def get_rates(self, ccy: str) -> Mapping[str, Optional[Decimal]]:
-        json = await self.get_json('api.yadio.io', '/rate/%s/BTC' % ccy)
+        json = await self.get_json('api.yadio.io', '/rate/%s/ELEK' % ccy)
         return {ccy: to_decimal(json['rate'])}
 
 
@@ -234,7 +240,7 @@ class BitcoinAverage(ExchangeBase):
 
     async def get_rates(self, ccy):
         json = await self.get_json('apiv2.bitcoinaverage.com', '/indices/global/ticker/short')
-        return dict([(r.replace("BTC", ""), to_decimal(json[r]['last']))
+        return dict([(r.replace("ELEK", ""), to_decimal(json[r]['last']))
                      for r in json if r != 'timestamp'])
 
 
@@ -249,22 +255,22 @@ class BitcoinVenezuela(ExchangeBase):
 
     async def get_rates(self, ccy):
         json = await self.get_json('api.bitcoinvenezuela.com', '/')
-        rates = [(r, to_decimal(json['BTC'][r])) for r in json['BTC']
-                 if json['BTC'][r] is not None]  # Giving NULL for LTC
+        rates = [(r, to_decimal(json['ELEK'][r])) for r in json['ELEK']
+                 if json['ELEK'][r] is not None]  # Giving NULL for LTC
         return dict(rates)
 
     def history_ccys(self):
         return ['ARS', 'EUR', 'USD', 'VEF']
 
     async def request_history(self, ccy):
-        json = await self.get_json('api.bitcoinvenezuela.com', "/historical/index.php?coin=BTC")
-        return json[ccy + '_BTC']
+        json = await self.get_json('api.bitcoinvenezuela.com', "/historical/index.php?coin=ELEK")
+        return json[ccy + '_ELEK']
 
 
 class Bitbank(ExchangeBase):
 
     async def get_rates(self, ccy):
-        json = await self.get_json('public.bitbank.cc', '/btc_jpy/ticker')
+        json = await self.get_json('public.bitbank.cc', '/elek_jpy/ticker')
         return {'JPY': to_decimal(json['data']['last'])}
 
 
@@ -275,8 +281,8 @@ class BitFinex(ExchangeBase):
             'api-pub.bitfinex.com',
             f"/v2/conf/pub:list:pair:exchange")
         pairs = [pair for pair in json[0]
-                 if len(pair) == 6 and pair[:3] == "BTC"]
-        return [pair[3:] for pair in pairs]
+                 if len(pair) == 7 and pair[:4] == "ELEK"]
+        return [pair[4:] for pair in pairs]
 
     def history_ccys(self):
         return CURRENCIES[self.name()]
@@ -285,14 +291,14 @@ class BitFinex(ExchangeBase):
         # ref https://docs.bitfinex.com/reference/rest-public-ticker
         json = await self.get_json(
             'api-pub.bitfinex.com',
-            f"/v2/ticker/tBTC{ccy}")
+            f"/v2/ticker/tELEK{ccy}")
         return {ccy: to_decimal(json[6])}
 
     async def request_history(self, ccy):
         # ref https://docs.bitfinex.com/reference/rest-public-candles
         history = await self.get_json(
             'api.bitfinex.com',
-            f"/v2/candles/trade:1D:tBTC{ccy}/hist?limit=10000")
+            f"/v2/candles/trade:1D:tELEK{ccy}/hist?limit=10000")
         return dict([(timestamp_to_datetime(h[0] // 1000, utc=True).strftime('%Y-%m-%d'), str(h[2]))
                      for h in history])
 
@@ -327,13 +333,13 @@ class BitStamp(ExchangeBase):
             f"/api/v2/ticker/")
         pairs = [ticker["pair"] for ticker in json]
         pairs = [pair for pair in pairs
-                 if len(pair) == 7 and pair[:4] == "BTC/"]
-        return [pair[4:] for pair in pairs]
+                 if len(pair) == 8 and pair[:5] == "ELEK/"]
+        return [pair[5:] for pair in pairs]
 
     async def get_rates(self, ccy):
         # ref https://www.bitstamp.net/api/#tag/Tickers/operation/GetMarketTicker
         if ccy in CURRENCIES[self.name()]:
-            json = await self.get_json('www.bitstamp.net', f'/api/v2/ticker/btc{ccy.lower()}/')
+            json = await self.get_json('www.bitstamp.net', f'/api/v2/ticker/elek{ccy.lower()}/')
             return {ccy: to_decimal(json['last'])}
         return {}
 
@@ -350,7 +356,7 @@ class BitStamp(ExchangeBase):
         async def populate_history(endtime: int):
             history = await self.get_json(
                 'www.bitstamp.net',
-                f"/api/v2/ohlc/btc{ccy.lower()}/?step={step}&limit={items_per_request}&end={endtime}")
+                f"/api/v2/ohlc/elek{ccy.lower()}/?step={step}&limit={items_per_request}&end={endtime}")
             history = dict([
                 (timestamp_to_datetime(int(h["timestamp"]), utc=True).strftime('%Y-%m-%d'), str(h["close"]))
                 for h in history["data"]["ohlc"]])
@@ -383,7 +389,7 @@ class BlockchainInfo(ExchangeBase):
 class Bylls(ExchangeBase):
 
     async def get_rates(self, ccy):
-        json = await self.get_json('bylls.com', '/api/price?from_currency=BTC&to_currency=CAD')
+        json = await self.get_json('bylls.com', '/api/price?from_currency=ELEK&to_currency=CAD')
         return {'CAD': to_decimal(json['public_price']['to_price'])}
 
 
@@ -391,14 +397,14 @@ class Coinbase(ExchangeBase):
 
     async def get_rates(self, ccy):
         json = await self.get_json('api.coinbase.com',
-                             '/v2/exchange-rates?currency=BTC')
+                             '/v2/exchange-rates?currency=ELEK')
         return {ccy: to_decimal(rate) for (ccy, rate) in json["data"]["rates"].items()}
 
 
 class CoinCap(ExchangeBase):
 
     async def get_rates(self, ccy):
-        json = await self.get_json('api.coincap.io', '/v2/rates/bitcoin/')
+        json = await self.get_json('api.coincap.io', '/v2/rates/elektron-net/')
         return {'USD': to_decimal(json['data']['rateUsd'])}
 
     def history_ccys(self):
@@ -408,7 +414,7 @@ class CoinCap(ExchangeBase):
         # Currently 2000 days is the maximum in 1 API call
         # (and history starts on 2017-03-23)
         history = await self.get_json('api.coincap.io',
-                                      '/v2/assets/bitcoin/history?interval=d1&limit=2000')
+                                      '/v2/assets/elektron-net/history?interval=d1&limit=2000')
         return dict([(timestamp_to_datetime(h['time']/1000, utc=True).strftime('%Y-%m-%d'), str(h['priceUsd']))
                      for h in history['data']])
 
@@ -416,9 +422,15 @@ class CoinCap(ExchangeBase):
 class CoinGecko(ExchangeBase):
 
     async def get_rates(self, ccy):
-        json = await self.get_json('api.coingecko.com', '/api/v3/exchange_rates')
-        return dict([(ccy.upper(), to_decimal(d['value']))
-                     for ccy, d in json['rates'].items() if d.get('value') is not None])
+        # Elektron Net fork: CoinGecko's /exchange_rates endpoint is
+        # hardcoded by CoinGecko to always be "vs 1 BTC" -- unlike every
+        # other provider in this file, there's no query param that can be
+        # swapped to point it at ELEK instead, so simply calling it would
+        # silently return real BTC-denominated rates mislabeled as ELEK.
+        # Disabled instead of doing that. A real fix would port this to the
+        # coin-id-based endpoint (/simple/price?ids=elektron-net&...), once
+        # Elektron Net has a real listing there.
+        return {}
 
     def history_ccys(self):
         # CoinGecko seems to have historical data for all ccys it supports
@@ -431,7 +443,7 @@ class CoinGecko(ExchangeBase):
         # > Your request exceeds the allowed time range. Public API users are limited to querying
         # > historical data within the past 365 days. Upgrade to a paid plan to enjoy full historical data access
         history = await self.get_json('api.coingecko.com',
-                                      f"/api/v3/coins/bitcoin/market_chart?vs_currency={ccy}&days={num_days}")
+                                      f"/api/v3/coins/elektron-net/market_chart?vs_currency={ccy}&days={num_days}")
 
         return dict([(timestamp_to_datetime(h[0]/1000, utc=True).strftime('%Y-%m-%d'), str(h[1]))
                      for h in history['prices']])
@@ -465,7 +477,7 @@ class itBit(ExchangeBase):
 
     async def get_rates(self, ccy):
         ccys = ['USD', 'EUR', 'SGD']
-        json = await self.get_json('api.itbit.com', '/v1/markets/XBT%s/ticker' % ccy)
+        json = await self.get_json('api.itbit.com', '/v1/markets/ELEK%s/ticker' % ccy)
         result = dict.fromkeys(ccys)
         if ccy in ccys:
             result[ccy] = to_decimal(json['lastPrice'])
@@ -477,7 +489,7 @@ class Kraken(ExchangeBase):
     async def get_rates(self, ccy):
         # ref https://docs.kraken.com/api/docs/rest-api/get-ticker-information
         ccys = ['EUR', 'USD', 'CAD', 'GBP', 'JPY']
-        pairs = ['XBT%s' % c for c in ccys]
+        pairs = ['ELEK%s' % c for c in ccys]
         json = await self.get_json('api.kraken.com',
                              '/0/public/Ticker?pair=%s' % ','.join(pairs))
         return dict((k[-3:], to_decimal(v['c'][0]))
@@ -514,21 +526,21 @@ class Winkdex(ExchangeBase):
 
 class Zaif(ExchangeBase):
     async def get_rates(self, ccy):
-        json = await self.get_json('api.zaif.jp', '/api/1/last_price/btc_jpy')
+        json = await self.get_json('api.zaif.jp', '/api/1/last_price/elek_jpy')
         return {'JPY': to_decimal(json['last_price'])}
 
 
 class Bitragem(ExchangeBase):
 
     async def get_rates(self,ccy):
-        json = await self.get_json('api.bitragem.com', '/v1/index?asset=BTC&market=BRL')
+        json = await self.get_json('api.bitragem.com', '/v1/index?asset=ELEK&market=BRL')
         return {'BRL': to_decimal(json['response']['index'])}
 
 
 class Biscoint(ExchangeBase):
 
     async def get_rates(self,ccy):
-        json = await self.get_json('api.biscoint.io', '/v1/ticker?base=BTC&quote=BRL')
+        json = await self.get_json('api.biscoint.io', '/v1/ticker?base=ELEK&quote=BRL')
         return {'BRL': to_decimal(json['data']['last'])}
 
 
@@ -537,7 +549,7 @@ class Walltime(ExchangeBase):
     async def get_rates(self, ccy):
         json = await self.get_json('s3.amazonaws.com',
                              '/data-production-walltime-info/production/dynamic/walltime-info.json')
-        return {'BRL': to_decimal(json['BRL_XBT']['last_inexact'])}
+        return {'BRL': to_decimal(json['BRL_ELEK']['last_inexact'])}
 
 
 def dictinvert(d):
