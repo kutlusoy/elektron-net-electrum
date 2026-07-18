@@ -95,18 +95,21 @@ def all_subclasses(cls) -> Set:
 ca_path = certifi.where()
 
 
-base_units = {'BTC':8, 'mBTC':5, 'bits':2, 'sat':0}
+# Elektron Net fork: ELEK (base unit, 8 decimals like BTC), mElek (milli),
+# bits (unchanged), lep ("Lepton", the smallest unit -- fork's name for
+# what upstream calls "sat"). See doc/elektron.md.
+base_units = {'ELEK':8, 'mElek':5, 'bits':2, 'lep':0}
 base_units_inverse = inv_dict(base_units)
-base_units_list = ['BTC', 'mBTC', 'bits', 'sat']  # list(dict) does not guarantee order
+base_units_list = ['ELEK', 'mElek', 'bits', 'lep']  # list(dict) does not guarantee order
 
-DECIMAL_POINT_DEFAULT = 5  # mBTC
+DECIMAL_POINT_DEFAULT = 5  # mElek
 
 
 class UnknownBaseUnit(Exception): pass
 
 
 def decimal_point_to_base_unit_name(dp: int) -> str:
-    # e.g. 8 -> "BTC"
+    # e.g. 8 -> "ELEK"
     try:
         return base_units_inverse[dp]
     except KeyError:
@@ -115,7 +118,7 @@ def decimal_point_to_base_unit_name(dp: int) -> str:
 
 def base_unit_name_to_decimal_point(unit_name: str) -> int:
     """Returns the max number of digits allowed after the decimal point."""
-    # e.g. "BTC" -> 8
+    # e.g. "ELEK" -> 8
     try:
         return base_units[unit_name]
     except KeyError:
@@ -870,13 +873,13 @@ def format_satoshis(
     return result
 
 
-FEERATE_PRECISION = 1  # num fractional decimal places for sat/byte fee rates
+FEERATE_PRECISION = 1  # num fractional decimal places for lep/byte fee rates
 _feerate_quanta = Decimal(10) ** (-FEERATE_PRECISION)
-UI_UNIT_NAME_FEERATE_SAT_PER_VBYTE = "sat/vbyte"
-UI_UNIT_NAME_FEERATE_SAT_PER_VB = "sat/vB"
+UI_UNIT_NAME_FEERATE_SAT_PER_VBYTE = "lep/vbyte"
+UI_UNIT_NAME_FEERATE_SAT_PER_VB = "lep/vB"
 UI_UNIT_NAME_TXSIZE_VBYTES = "vbytes"
 UI_UNIT_NAME_MEMPOOL_MB = "vMB"
-UI_UNIT_NAME_FIXED_SAT = "sat"
+UI_UNIT_NAME_FIXED_SAT = "lep"
 
 
 def format_fee_satoshis(fee, *, num_zeros=0, precision=None):
@@ -959,36 +962,16 @@ def delta_time_str(distance_in_time: timedelta, *, include_seconds: bool = False
         return _("over {} years").format(round(distance_in_minutes / 525600))
 
 
+# Elektron Net fork: the upstream list here was ~15 real Bitcoin block
+# explorers (mempool.space, blockstream.info, blockchair.com, etc.) -- all
+# useless for this chain (an Elektron Net txid/address won't be found on
+# any of them). Replaced with mempool.elektron-net.org, this project's own
+# mempool.space fork (elektron-net-mempool), which uses the same tx/addr
+# URL path convention since it shares mempool.space's frontend routing.
+# 'system default' kept: it delegates to the OS's registered "blockchain:"
+# URI handler, not a hardcoded Bitcoin-specific service.
 mainnet_block_explorers = {
-    '3xpl.com': ('https://3xpl.com/bitcoin/',
-                        {'tx': 'transaction/', 'addr': 'address/'}),
-    'Bitflyer.jp': ('https://chainflyer.bitflyer.jp/',
-                        {'tx': 'Transaction/', 'addr': 'Address/'}),
-    'Blockchain.info': ('https://blockchain.com/btc/',
-                        {'tx': 'tx/', 'addr': 'address/'}),
-    'Blockstream.info': ('https://blockstream.info/',
-                        {'tx': 'tx/', 'addr': 'address/'}),
-    'Bitaps.com': ('https://btc.bitaps.com/',
-                        {'tx': '', 'addr': ''}),
-    'BTC.com': ('https://btc.com/',
-                        {'tx': '', 'addr': ''}),
-    'Chain.so': ('https://www.chain.so/',
-                        {'tx': 'tx/BTC/', 'addr': 'address/BTC/'}),
-    'Insight.is': ('https://insight.bitpay.com/',
-                        {'tx': 'tx/', 'addr': 'address/'}),
-    'BlockCypher.com': ('https://live.blockcypher.com/btc/',
-                        {'tx': 'tx/', 'addr': 'address/'}),
-    'Blockchair.com': ('https://blockchair.com/bitcoin/',
-                        {'tx': 'transaction/', 'addr': 'address/'}),
-    'blockonomics.co': ('https://www.blockonomics.co/',
-                        {'tx': 'api/tx?txid=', 'addr': '#/search?q='}),
-    'mempool.space': ('https://mempool.space/',
-                        {'tx': 'tx/', 'addr': 'address/'}),
-    'mempool.emzy.de': ('https://mempool.emzy.de/',
-                        {'tx': 'tx/', 'addr': 'address/'}),
-    'OXT.me': ('https://oxt.me/',
-                        {'tx': 'transaction/', 'addr': 'address/'}),
-    'mynode.local': ('http://mynode.local:3002/',
+    'mempool.elektron-net.org': ('https://mempool.elektron-net.org/',
                         {'tx': 'tx/', 'addr': 'address/'}),
     'system default': ('blockchain:/',
                         {'tx': 'tx/', 'addr': 'address/'}),

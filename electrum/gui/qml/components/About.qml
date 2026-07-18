@@ -72,12 +72,19 @@ Pane {
                 Layout.alignment: Qt.AlignRight
             }
             Label {
-                text: '<a href="https://electrum.org">https://electrum.org</a>'
+                text: '<a href="https://elektron-net.org">https://elektron-net.org</a>'
                 textFormat: Text.RichText
                 onLinkActivated: Qt.openUrlExternally(link)
             }
             Label {
-                text: qsTr('Developers')
+                text: qsTr('Fork maintainer')
+                Layout.alignment: Qt.AlignRight
+            }
+            Label {
+                text: 'Elektron Net Developers'
+            }
+            Label {
+                text: qsTr('Original Electrum developers')
                 Layout.alignment: Qt.AlignRight
             }
             Label {
@@ -89,9 +96,12 @@ Pane {
                 Layout.columnSpan: 2
             }
             Label {
-                text: qsTr('Distributed by Electrum Technologies GmbH')
+                text: qsTr('Elektron Electrum is a fork of Electrum for Elektron Net (ELEK), distributed by Elektron Net Developers. It has no affiliation with Electrum Technologies GmbH, the original Electrum project, or Bitcoin.')
                 Layout.columnSpan: 2
                 Layout.alignment: Qt.AlignHCenter
+                wrapMode: Text.WordWrap
+                Layout.preferredWidth: parent.width
+                horizontalAlignment: Text.AlignHCenter
             }
         }
     }

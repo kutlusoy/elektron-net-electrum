@@ -40,8 +40,31 @@ _logger = get_logger(__name__)
 HEADER_SIZE = 80  # bytes
 CHUNK_SIZE = 2016  # num headers in a difficulty retarget period
 
-# see https://github.com/bitcoin/bitcoin/blob/feedb9c84e72e4fff489810a2bbeec09bcda5763/src/chainparams.cpp#L76
-MAX_TARGET = 0x00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff  # compact: 0x1d00ffff
+# Elektron Net fork: real consensus parameters, from elektron-net's
+# src/kernel/chainparams.cpp (CMainParams) and src/pow.cpp. See doc/elektron.md.
+# These only apply to BitcoinMainnet -- get_target()/verify_header() both
+# early-return for constants.net.TESTNET (testnet/signet/regtest still carry
+# real Bitcoin parameters and are unaffected by this fork's mainnet difficulty
+# rules; see doc/elektron.md "Open items").
+MAX_TARGET = 0x7fffff00000000000000000000000000000000000000000000000000000000  # powLimit; compact: 0x1f7fffff
+TARGET_TIMESPAN = 2016 * 60  # nPowTargetTimespan: 1.4 days (not Bitcoin's 14)
+TARGET_SPACING = 60  # nPowTargetSpacing
+
+# "Stoic Awakening": a temporary, Elektron-Net-specific min-difficulty escape
+# active for heights [STOIC_AWAKENING_START_HEIGHT, STOIC_AWAKENING_END_HEIGHT).
+# Between normal 2016-block retarget points, if a block's timestamp is more
+# than 2*TARGET_SPACING (120s) after its parent's, its target drops to
+# MAX_TARGET (powLimit) for that one block; otherwise it carries forward the
+# last non-escape block's bits (walking back across escape blocks, but never
+# past a retarget boundary). This is structurally identical to Bitcoin's own
+# testnet min-difficulty rule, just scoped to a height range on mainnet
+# instead of being permanently enabled. See elektron-net's src/pow.cpp
+# (GetNextWorkRequired) -- this is a faithful port of that exact logic, not
+# an approximation. Any wallet doing independent SPV header verification
+# (not just this one) needs this same logic; see the cross-repo guideline in
+# elektron-net's doc-elektron/guideline-spv-header-difficulty-verification.md.
+STOIC_AWAKENING_START_HEIGHT = 1
+STOIC_AWAKENING_END_HEIGHT = 150000
 
 
 class MissingHeader(Exception):
@@ -324,7 +347,7 @@ class Blockchain(Logger):
         num = len(data) // HEADER_SIZE
         start_height = index * CHUNK_SIZE
         prev_hash = self.get_hash(start_height - 1)
-        target = self.get_target(index-1)
+        chunk_headers: Dict[int, dict] = {}
         for i in range(num):
             height = start_height + i
             try:
@@ -333,7 +356,9 @@ class Blockchain(Logger):
                 expected_header_hash = None
             raw_header = data[i*HEADER_SIZE : (i+1)*HEADER_SIZE]
             header = deserialize_header(raw_header, index*CHUNK_SIZE + i)
+            target = self.get_expected_target(height, header, chunk_headers=chunk_headers)
             self.verify_header(header, prev_hash, target, expected_header_hash)
+            chunk_headers[height] = header
             prev_hash = hash_header(header)
 
     @with_lock
@@ -546,13 +571,64 @@ class Blockchain(Logger):
         bits = last.get('bits')
         target = self.bits_to_target(bits)
         nActualTimespan = last.get('timestamp') - first.get('timestamp')
-        nTargetTimespan = 14 * 24 * 60 * 60
+        nTargetTimespan = TARGET_TIMESPAN
         nActualTimespan = max(nActualTimespan, nTargetTimespan // 4)
         nActualTimespan = min(nActualTimespan, nTargetTimespan * 4)
         new_target = min(MAX_TARGET, (target * nActualTimespan) // nTargetTimespan)
         # not any target can be represented in 32 bits:
         new_target = self.bits_to_target(self.target_to_bits(new_target))
         return new_target
+
+    def get_expected_target(
+        self,
+        height: int,
+        header: dict,
+        *,
+        chunk_headers: Optional[Dict[int, dict]] = None,
+    ) -> int:
+        """Returns the target that `header` (at `height`) is required to
+        satisfy under Elektron Net's real difficulty rules, which differ
+        from a plain Bitcoin-style retarget between chunk boundaries during
+        the "Stoic Awakening" window (see module-level constants above and
+        doc/elektron.md). `header` is the header being validated -- its own
+        timestamp is needed to evaluate the min-difficulty escape.
+        `chunk_headers`: headers already parsed earlier in the *same*
+        verify_chunk() call but not yet persisted to disk (self.read_header()
+        can't see them yet) -- needed so the carry-forward/escape lookup can
+        see across not-yet-saved headers within the chunk being verified.
+        """
+        if constants.net.TESTNET:
+            return 0
+        if height % CHUNK_SIZE == 0:
+            return self.get_target(height // CHUNK_SIZE - 1)
+
+        def _get_header(h: int) -> dict:
+            if chunk_headers is not None and h in chunk_headers:
+                return chunk_headers[h]
+            hdr = self.read_header(h)
+            if hdr is None:
+                raise MissingHeader(h)
+            return hdr
+
+        prev_header = _get_header(height - 1)
+        stoic_active = STOIC_AWAKENING_START_HEIGHT <= height < STOIC_AWAKENING_END_HEIGHT
+        if not stoic_active:
+            # matches elektron-net's src/pow.cpp: "return pindexLast->nBits;"
+            return self.bits_to_target(prev_header['bits'])
+
+        powlimit_bits = self.target_to_bits(MAX_TARGET)
+        if header.get('timestamp', 0) > prev_header['timestamp'] + TARGET_SPACING * 2:
+            return MAX_TARGET
+
+        # Walk back to the last block that wasn't itself a min-difficulty
+        # escape block, stopping at a retarget boundary regardless (mirrors
+        # elektron-net's src/pow.cpp GetNextWorkRequired exactly).
+        h = height - 1
+        hdr = prev_header
+        while h % CHUNK_SIZE != 0 and hdr['bits'] == powlimit_bits:
+            h -= 1
+            hdr = _get_header(h)
+        return self.bits_to_target(hdr['bits'])
 
     @classmethod
     def bits_to_target(cls, bits: int) -> int:
@@ -594,6 +670,15 @@ class Blockchain(Logger):
 
     def chainwork_of_header_at_height(self, height: int) -> int:
         """work done by single header at given height"""
+        # Elektron Net fork: this assumes every header in the chunk has the
+        # same target, via get_target() -- not accurate for chunks inside
+        # the "Stoic Awakening" window (see module-level constants above),
+        # where individual headers can be at a much easier target than the
+        # rest of the chunk. Only affects get_chainwork()'s cumulative-work
+        # estimate, used for choosing between competing valid header chains
+        # on a reorg -- not header validation itself (get_expected_target()
+        # handles that correctly per-header). Not fixed here; see
+        # doc/elektron.md.
         chunk_idx = height // CHUNK_SIZE - 1
         target = self.get_target(chunk_idx)
         work = ((2 ** 256 - target - 1) // (target + 1)) + 1
@@ -641,7 +726,7 @@ class Blockchain(Logger):
         if prev_hash != header.get('prev_block_hash'):
             return False
         try:
-            target = self.get_target(height // CHUNK_SIZE - 1)
+            target = self.get_expected_target(height, header)
         except MissingHeader:
             return False
         try:

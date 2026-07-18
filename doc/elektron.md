@@ -65,6 +65,56 @@ specifying the legacy derivation path (e.g. `m/84'/0'/0'`) in Electrum's
   it just does a full header sync instead of jumping ahead from a trusted
   checkpoint.
 
+## Header-chain difficulty verification (`electrum/blockchain.py`)
+
+Electrum SPV clients independently verify the header chain's proof-of-work
+(not just trust the server), which means `blockchain.py` needs to know this
+chain's real difficulty rules -- carried over from upstream, it still had
+Bitcoin's own values, and header sync failed against a real Elektron Net
+node as a result (confirmed live: `unexpected bad header during binary`
+trying to validate height 1). Fixed:
+
+- `MAX_TARGET`: was Bitcoin's `powLimit` (compact `0x1d00ffff`); now
+  Elektron Net's own (compact `0x1f7fffff`, confirmed against a real
+  height-1 header from the network -- much easier, consistent with a young,
+  low-hashrate chain).
+- `TARGET_TIMESPAN`: was Bitcoin's 14-day retarget window; now Elektron
+  Net's 1.4 days (`nPowTargetTimespan = 2016 * 60`, from
+  `elektron-net/src/kernel/chainparams.cpp`). The retarget *interval in
+  blocks* (`CHUNK_SIZE = 2016`) was already correct -- only the real-time
+  window differs, since Elektron Net blocks are 10x faster (60s vs 600s).
+- **"Stoic Awakening"**: a temporary, Elektron-Net-specific min-difficulty
+  escape, active for heights `[1, 150000)` (`STOIC_AWAKENING_START_HEIGHT`/
+  `STOIC_AWAKENING_END_HEIGHT` in `blockchain.py`). Between normal 2016-block
+  retarget points, if a block's timestamp is more than 120s (2x target
+  spacing) after its parent's, its target drops to `MAX_TARGET` for that one
+  block; otherwise the block carries forward the last non-escape block's
+  bits (walking back across chained escape blocks, stopping at a retarget
+  boundary regardless). This is structurally identical to Bitcoin's own
+  testnet min-difficulty rule, just time-boxed on mainnet instead of
+  permanent -- see `elektron-net/src/pow.cpp` (`GetNextWorkRequired`,
+  `PermittedDifficultyTransition`) for the source of truth, and
+  `elektron-net/doc-elektron/CHANGELOG-stoic-awakening-retirement.md` for
+  why/when it retires. Because the current chain tip is still well inside
+  this window, this isn't an edge case -- it affects the *majority* of
+  currently-existing mainnet header history, not just early blocks.
+  Implemented in `Blockchain.get_expected_target()`, used by both
+  `verify_chunk()` (bulk header-chunk sync) and `can_connect()`
+  (single-header sync/tip-following); tests in `tests/test_blockchain.py`
+  (`TestStoicAwakeningDifficulty`).
+- **Not fixed / known follow-up:** `chainwork_of_header_at_height()` /
+  `get_chainwork()` (used to pick between competing valid header chains on a
+  reorg, not for header validation itself) still assume uniform difficulty
+  across a whole 2016-block chunk, which undercounts/overcounts real work
+  for chunks inside the Stoic Awakening window. Doesn't affect normal
+  single-chain sync; only matters if this client ever needs to resolve a
+  fork/reorg while still inside the window.
+- **This is not Electrum-specific.** Any wallet doing independent SPV
+  header verification for Elektron Net needs this same logic, most notably
+  the Stoic Awakening escape, which has no equivalent in stock Bitcoin
+  Core-derived difficulty code. Documented for other wallet implementers in
+  `elektron-net/doc-elektron/guideline-spv-header-difficulty-verification.md`.
+
 ## Branding
 
 Display name is "Elektron Electrum" throughout (window titles, About
@@ -115,6 +165,30 @@ Android, AppImage, source tarball) to one GitHub Release per tag.
   restoring a pre-SLIP-44 wallet by seed currently requires manually
   entering the legacy `m/.../0'/...` derivation path; no automatic
   fallback scan exists yet.
+- **`BIP44_COIN_TYPE` is not used by the default "new wallet" flow
+  (deliberate, not a bug):** `keystore.from_seed()` derives Electrum-native
+  (non-BIP39) seeds at the hardcoded, coin-type-independent path `m/0'`
+  (single-sig segwit) / `m/1'` (multisig segwit) -- this is upstream
+  Electrum's own historical scheme and predates BIP44 entirely;
+  `BIP44_COIN_TYPE = 1370` is only actually used by `bip44_derivation()` /
+  `purpose48_derivation()`, i.e. the BIP39-seed and custom-derivation paths
+  (where it *does* apply, so those are unaffected by this). Practical
+  effect: the "create new wallet" flow using a native Electrum seed
+  currently produces a wallet at the *same* derivation path Bitcoin-mainnet
+  upstream Electrum would use for the same seed words; combined with
+  `WIF_PREFIX`/`XPRV`/`XPUB` headers being byte-identical to Bitcoin
+  mainnet (see above), the same seed phrase used in both this fork and real
+  upstream Electrum derives the *same* private keys.
+  A fork-specific fix (anchoring `m/0'`/`m/1'` on `1370` instead) was tried
+  and reverted: it touched ~100 test fixtures across the suite for a
+  collision that in practice only occurs if a user deliberately reuses the
+  exact same seed phrase across this wallet and a real Bitcoin wallet.
+  Checked how other long-running Electrum forks with a registered SLIP-44
+  coin type handle this: Electrum-LTC and Electrum-GRS both left `m/0'`/
+  `m/1'` completely unmodified (Electrum-LTC even kept Bitcoin's xprv/xpub
+  version bytes instead of its own Ltub/Ltpv -- see
+  `pooler/electrum-ltc#52`, open since 2018). Decision: match that
+  precedent and leave this alone.
 - **BOLT11 HRP / Lightning (guideline SS3.3, Phase 3):** undecided upstream;
   `BOLT11_HRP` here is a placeholder equal to `SEGWIT_HRP`. No Lightning
   routing/trampoline nodes exist on Elektron Net yet, so this is out of
@@ -129,3 +203,15 @@ Android, AppImage, source tarball) to one GitHub Release per tag.
   jump-starting from a trusted point); populating it with real Elektron Net
   checkpoints is a possible future optimization, not a correctness
   requirement.
+- **`electrum/currencies.json` is stale (bundled cache, upstream data):**
+  `electrum/exchange_rate.py`'s fiat-rate providers were repointed from BTC
+  to ELEK trading pairs (none of these real third-party exchanges actually
+  list ELEK, so this mostly just means "return nothing" instead of "return
+  a real Bitcoin price mislabeled as an ELEK price" -- see the comment at
+  the top of that file). `currencies.json` is a pre-generated cache of
+  which fiat currencies each provider supports, built from real upstream
+  Bitcoin listings; it wasn't regenerated (would require live network
+  calls to ~20 exchanges) so it's now out of sync with the new queries --
+  the currency dropdown may offer currencies that then return no rate.
+  Not dangerous (no wrong price shown), just a minor UI inconsistency
+  until it's regenerated or cleared.
