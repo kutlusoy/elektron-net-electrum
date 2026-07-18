@@ -37,11 +37,11 @@ class TestServerAddr(ElectrumTestCase):
         self.assertEqual(None, ServerAddr.from_str_with_inference("2400:6180:0:d1::86b:e001"))
         self.assertEqual(None, ServerAddr.from_str_with_inference("[2400:6180:0:d1::86b:e001]"))
 
-        self.assertEqual(ServerAddr(host="104.198.149.61", port=80, protocol="s"),
+        self.assertEqual(ServerAddr(host="104.198.149.61", port=80, protocol="t"),
                          ServerAddr.from_str_with_inference("104.198.149.61:80"))
-        self.assertEqual(ServerAddr(host="ecdsa.net", port=110, protocol="s"),
+        self.assertEqual(ServerAddr(host="ecdsa.net", port=110, protocol="t"),
                          ServerAddr.from_str_with_inference("ecdsa.net:110"))
-        self.assertEqual(ServerAddr(host="2400:6180:0:d1::86b:e001", port=50002, protocol="s"),
+        self.assertEqual(ServerAddr(host="2400:6180:0:d1::86b:e001", port=50002, protocol="t"),
                          ServerAddr.from_str_with_inference("[2400:6180:0:d1::86b:e001]:50002"))
 
         self.assertEqual(ServerAddr(host="104.198.149.61", port=80, protocol="t"),

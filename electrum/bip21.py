@@ -10,7 +10,10 @@ from .bitcoin import COIN, TOTAL_COIN_SUPPLY_LIMIT_IN_BTC
 from .bolt11 import decode_bolt11_invoice, BOLT11DecodeException
 
 # note: when checking against these, use .lower() to support case-insensitivity
-BITCOIN_BIP21_URI_SCHEME = 'bitcoin'
+# Elektron Net fork: renamed from 'bitcoin' to 'elek' -- this is a different
+# chain, and a "bitcoin:" URI must not be silently accepted here (see
+# doc/elektron.md, collision-avoidance with the original Electrum/Bitcoin).
+BITCOIN_BIP21_URI_SCHEME = 'elek'
 LIGHTNING_URI_SCHEME = 'lightning'
 
 # note: URI scheme handler registrations are duplicated all over the codebase:
@@ -69,7 +72,7 @@ def parse_bip21_URI(uri: str) -> dict:
             else:
                 amount = Decimal(am) * COIN
             if amount > TOTAL_COIN_SUPPLY_LIMIT_IN_BTC * COIN or amount <= 0:
-                raise InvalidBitcoinURI(f"amount is out-of-bounds: {amount!r} BTC")
+                raise InvalidBitcoinURI(f"amount is out-of-bounds: {amount!r} ELEK")
             out['amount'] = int(amount)
         except Exception as e:
             raise InvalidBitcoinURI(f"failed to parse 'amount' field: {repr(e)}") from e

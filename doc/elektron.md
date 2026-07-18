@@ -115,6 +115,23 @@ Android, AppImage, source tarball) to one GitHub Release per tag.
   restoring a pre-SLIP-44 wallet by seed currently requires manually
   entering the legacy `m/.../0'/...` derivation path; no automatic
   fallback scan exists yet.
+- **`BIP44_COIN_TYPE` is not used by the default "new wallet" flow (open
+  design question, not yet fixed):** `keystore.from_seed()` derives
+  Electrum-native (non-BIP39) seeds at the hardcoded, coin-type-independent
+  path `m/0'` (single-sig segwit) / `m/1'` (multisig segwit) -- this is
+  upstream Electrum's own historical scheme and predates BIP44 entirely;
+  `BIP44_COIN_TYPE = 1370` is only actually used by `bip44_derivation()` /
+  `purpose48_derivation()`, i.e. the BIP39-seed and custom-derivation paths.
+  Practical effect: the most common "create new wallet" flow (native
+  Electrum seed, segwit) currently produces a wallet at the *same*
+  derivation path Bitcoin-mainnet upstream Electrum would use for the same
+  seed words. Combined with `WIF_PREFIX`/`XPRV`/`XPUB` headers being
+  byte-identical to Bitcoin mainnet (see above), the same seed phrase used
+  in both this fork and real upstream Electrum currently derives the
+  *same* private keys. Fixing this means changing the hardcoded `m/0'`/
+  `m/1'` scheme to incorporate `1370` -- a wallet-compatibility-affecting
+  decision (changes what a freshly created wallet's addresses are) that
+  needs an explicit choice, not a silent one.
 - **BOLT11 HRP / Lightning (guideline SS3.3, Phase 3):** undecided upstream;
   `BOLT11_HRP` here is a placeholder equal to `SEGWIT_HRP`. No Lightning
   routing/trampoline nodes exist on Elektron Net yet, so this is out of

@@ -848,9 +848,9 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger, QtEventListener):
             self.help_menu.addAction(about_action)
         self.help_menu.addAction(_("&Changelog"), lambda: webopen(constants.RELEASE_NOTES_URL))
         self.help_menu.addAction(_("&Check for updates"), self.show_update_check)
-        self.help_menu.addAction(_("&Official website"), lambda: webopen("https://electrum.org"))
+        self.help_menu.addAction(_("&Official website"), lambda: webopen("https://elektron-net.org"))
         self.help_menu.addSeparator()
-        self.help_menu.addAction(_("&Documentation"), lambda: webopen("http://docs.electrum.org/")).setShortcut(QKeySequence.StandardKey.HelpContents)
+        self.help_menu.addAction(_("&Documentation"), lambda: webopen(constants.GIT_REPO_URL + "/tree/main/doc")).setShortcut(QKeySequence.StandardKey.HelpContents)
         if not constants.net.TESTNET:
             self.help_menu.addAction(_("&Bitcoin Paper"), self.show_bitcoin_paper)
         self.help_menu.addAction(_("&Report Bug"), self.show_report_bug)
@@ -873,8 +873,10 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger, QtEventListener):
     def show_about(self):
         QMessageBox.about(self, "Elektron Electrum",
                           (_("Version")+" %s" % ELECTRUM_VERSION + "\n\n" +
-                           _("Elektron Electrum is a fork of Electrum (electrum.org) for Elektron Net (ELEK). "
-                              "Its focus is speed, with low resource usage and simplifying Elektron Net.") + " " +
+                           _("Elektron Electrum is a fork of Electrum (electrum.org) for Elektron Net (ELEK), "
+                              "maintained by Elektron Net Developers (elektron-net.org). It has no affiliation "
+                              "with Electrum Technologies GmbH, the original Electrum project, or Bitcoin.") + " " +
+                           _("Its focus is speed, with low resource usage and simplifying Elektron Net.") + " " +
                            _("You do not need to perform regular backups, because your wallet can be "
                               "recovered from a secret phrase that you can memorize or write on paper.") + " " +
                            _("Startup times are instant because it operates in conjunction with high-performance "
@@ -975,8 +977,8 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger, QtEventListener):
         )
 
     def format_amount_and_units(self, amount_sat, *, timestamp: int = None) -> str:
-        """Returns string with both bitcoin and fiat amounts, in desired units.
-        E.g. 500_000 -> '0.005 BTC (191.42 EUR)'
+        """Returns string with both ELEK and fiat amounts, in desired units.
+        E.g. 500_000 -> '0.005 ELEK (191.42 EUR)'
         """
         text = self.config.format_amount_and_units(amount_sat)
         fiat = self.fx.format_amount_and_units(amount_sat, timestamp=timestamp) if self.fx else None
