@@ -458,3 +458,132 @@ class TestVerifyHeader(ElectrumTestCase):
         with self.assertRaises(InvalidHeader):
             self.header["nonce"] = 42
             Blockchain.verify_header(self.header, self.prev_hash, self.target)
+
+
+class TestStoicAwakeningDifficulty(ElectrumTestCase):
+    """Elektron Net fork: get_expected_target() covers the "Stoic Awakening"
+    min-difficulty escape (see blockchain.py module-level constants and
+    doc/elektron.md), which real Bitcoin-mainnet-derived Electrum forks
+    never needed. bits=0x1f7fffff (blockchain.MAX_TARGET's compact form) for
+    a genuine height-1 header is directly confirmed from a real Elektron Net
+    node's response (see doc/elektron.md); the rest of these are synthetic
+    but exercise the exact branches of elektron-net's src/pow.cpp
+    GetNextWorkRequired.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        constants.BitcoinMainnet.set_as_network()
+
+    def setUp(self):
+        super().setUp()
+        self.data_dir = self.electrum_path
+        make_dir(os.path.join(self.data_dir, 'forks'))
+        self.config = SimpleConfig({'electrum_path': self.data_dir})
+        blockchain.blockchains = {}
+        self.chain = Blockchain(
+            config=self.config, forkpoint=0, parent=None,
+            forkpoint_hash=constants.net.GENESIS, prev_hash=None)
+        open(self.chain.path(), 'w+').close()
+
+    POWLIMIT_BITS = 0x1f7fffff  # compact form of blockchain.MAX_TARGET
+
+    @staticmethod
+    def _mk_header(height, *, timestamp, bits):
+        return {
+            'version': 1,
+            'prev_block_hash': '00' * 32,
+            'merkle_root': '00' * 32,
+            'timestamp': timestamp,
+            'bits': bits,
+            'nonce': 0,
+            'block_height': height,
+        }
+
+    def test_max_target_matches_real_observed_height1_bits(self):
+        # bits=528482303 (0x1f7fffff) was directly observed on a real
+        # Elektron Net height-1 header (see doc/elektron.md). Confirms
+        # blockchain.MAX_TARGET round-trips to exactly that compact value.
+        self.assertEqual(0x1f7fffff, Blockchain.target_to_bits(blockchain.MAX_TARGET))
+        self.assertEqual(528482303, 0x1f7fffff)
+
+    def test_boundary_height_uses_classic_retarget(self):
+        # height % CHUNK_SIZE == 0 must go through get_target(), regardless
+        # of the Stoic Awakening window. get_target(0) needs real headers at
+        # heights 0 and CHUNK_SIZE-1 on disk to compute a chunk-1 target.
+        first = self._mk_header(0, timestamp=1_000_000, bits=0x1e0fffff)
+        self.chain.save_header(first)
+        for h in range(1, blockchain.CHUNK_SIZE - 1):
+            self.chain.save_header(self._mk_header(h, timestamp=1_000_000 + h * 60, bits=0x1e0fffff))
+        last = self._mk_header(
+            blockchain.CHUNK_SIZE - 1,
+            timestamp=1_000_000 + (blockchain.CHUNK_SIZE - 1) * 60,
+            bits=0x1e0fffff)
+        self.chain.save_header(last)
+        header = self._mk_header(blockchain.CHUNK_SIZE, timestamp=0, bits=0)
+        target = self.chain.get_expected_target(blockchain.CHUNK_SIZE, header)
+        self.assertEqual(self.chain.get_target(0), target)
+
+    def test_non_boundary_no_escape_carries_forward_prev_bits(self):
+        prev = self._mk_header(0, timestamp=1_000_000, bits=0x1e0fffff)
+        header = self._mk_header(1, timestamp=1_000_000 + 30, bits=0)
+        target = self.chain.get_expected_target(1, header, chunk_headers={0: prev})
+        self.assertEqual(Blockchain.bits_to_target(0x1e0fffff), target)
+
+    def test_non_boundary_escape_triggers_on_gap_over_120s(self):
+        prev = self._mk_header(0, timestamp=1_000_000, bits=0x1e0fffff)
+        header = self._mk_header(1, timestamp=1_000_000 + 121, bits=0)
+        target = self.chain.get_expected_target(1, header, chunk_headers={0: prev})
+        self.assertEqual(blockchain.MAX_TARGET, target)
+
+    def test_non_boundary_no_escape_at_exactly_120s_gap(self):
+        # C++: "more than 2x target spacing" -- exactly 120s must NOT escape.
+        prev = self._mk_header(0, timestamp=1_000_000, bits=0x1e0fffff)
+        header = self._mk_header(1, timestamp=1_000_000 + 120, bits=0)
+        target = self.chain.get_expected_target(1, header, chunk_headers={0: prev})
+        self.assertEqual(Blockchain.bits_to_target(0x1e0fffff), target)
+
+    def test_escape_walk_back_across_multiple_min_difficulty_blocks(self):
+        genesis = self._mk_header(0, timestamp=0, bits=0x1e0fffff)
+        h1 = self._mk_header(1, timestamp=1000, bits=self.POWLIMIT_BITS)  # escape block
+        h2 = self._mk_header(2, timestamp=1030, bits=self.POWLIMIT_BITS)  # escape block
+        h3 = self._mk_header(3, timestamp=1060, bits=0)
+        target = self.chain.get_expected_target(
+            3, h3, chunk_headers={0: genesis, 1: h1, 2: h2})
+        # walk back h2(escape) -> h1(escape) -> height 0, which is itself a
+        # chunk boundary (0 % CHUNK_SIZE == 0), so the walk stops there and
+        # uses genesis's own bits, regardless of what they are.
+        self.assertEqual(Blockchain.bits_to_target(0x1e0fffff), target)
+
+    def test_walk_back_stops_at_first_real_difficulty_block(self):
+        real = self._mk_header(5, timestamp=2000, bits=0x1e0fffff)
+        escape = self._mk_header(6, timestamp=2500, bits=self.POWLIMIT_BITS)
+        header = self._mk_header(7, timestamp=2530, bits=0)
+        target = self.chain.get_expected_target(
+            7, header, chunk_headers={5: real, 6: escape})
+        self.assertEqual(Blockchain.bits_to_target(0x1e0fffff), target)
+
+    def test_post_retirement_uses_plain_carry_forward_not_walk_back(self):
+        # Past STOIC_AWAKENING_END_HEIGHT, elektron-net's pow.cpp returns
+        # pindexLast->nBits directly (no min-difficulty exception at all
+        # anymore) -- even if the immediate predecessor happens to carry a
+        # min-difficulty bits value, it must NOT walk back further.
+        end_height = blockchain.STOIC_AWAKENING_END_HEIGHT
+        prev = self._mk_header(end_height - 1, timestamp=9000, bits=self.POWLIMIT_BITS)
+        header = self._mk_header(end_height, timestamp=9500, bits=0)
+        # end_height itself might coincidentally be a chunk boundary; use a
+        # non-boundary height near it instead so the "not stoic_active"
+        # (else-branch) code path is actually exercised.
+        target_height = end_height if end_height % blockchain.CHUNK_SIZE != 0 else end_height + 1
+        prev = self._mk_header(target_height - 1, timestamp=9000, bits=self.POWLIMIT_BITS)
+        header = self._mk_header(target_height, timestamp=9500, bits=0)
+        target = self.chain.get_expected_target(
+            target_height, header, chunk_headers={target_height - 1: prev})
+        self.assertEqual(Blockchain.bits_to_target(self.POWLIMIT_BITS), target)
+
+    def test_activation_at_height_1_applies_immediately(self):
+        self.assertEqual(1, blockchain.STOIC_AWAKENING_START_HEIGHT)
+        # sanity: height 1 is within [1, 150000), i.e. stoic-active
+        self.assertTrue(
+            blockchain.STOIC_AWAKENING_START_HEIGHT <= 1 < blockchain.STOIC_AWAKENING_END_HEIGHT)

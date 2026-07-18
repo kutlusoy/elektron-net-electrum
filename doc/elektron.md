@@ -65,6 +65,56 @@ specifying the legacy derivation path (e.g. `m/84'/0'/0'`) in Electrum's
   it just does a full header sync instead of jumping ahead from a trusted
   checkpoint.
 
+## Header-chain difficulty verification (`electrum/blockchain.py`)
+
+Electrum SPV clients independently verify the header chain's proof-of-work
+(not just trust the server), which means `blockchain.py` needs to know this
+chain's real difficulty rules -- carried over from upstream, it still had
+Bitcoin's own values, and header sync failed against a real Elektron Net
+node as a result (confirmed live: `unexpected bad header during binary`
+trying to validate height 1). Fixed:
+
+- `MAX_TARGET`: was Bitcoin's `powLimit` (compact `0x1d00ffff`); now
+  Elektron Net's own (compact `0x1f7fffff`, confirmed against a real
+  height-1 header from the network -- much easier, consistent with a young,
+  low-hashrate chain).
+- `TARGET_TIMESPAN`: was Bitcoin's 14-day retarget window; now Elektron
+  Net's 1.4 days (`nPowTargetTimespan = 2016 * 60`, from
+  `elektron-net/src/kernel/chainparams.cpp`). The retarget *interval in
+  blocks* (`CHUNK_SIZE = 2016`) was already correct -- only the real-time
+  window differs, since Elektron Net blocks are 10x faster (60s vs 600s).
+- **"Stoic Awakening"**: a temporary, Elektron-Net-specific min-difficulty
+  escape, active for heights `[1, 150000)` (`STOIC_AWAKENING_START_HEIGHT`/
+  `STOIC_AWAKENING_END_HEIGHT` in `blockchain.py`). Between normal 2016-block
+  retarget points, if a block's timestamp is more than 120s (2x target
+  spacing) after its parent's, its target drops to `MAX_TARGET` for that one
+  block; otherwise the block carries forward the last non-escape block's
+  bits (walking back across chained escape blocks, stopping at a retarget
+  boundary regardless). This is structurally identical to Bitcoin's own
+  testnet min-difficulty rule, just time-boxed on mainnet instead of
+  permanent -- see `elektron-net/src/pow.cpp` (`GetNextWorkRequired`,
+  `PermittedDifficultyTransition`) for the source of truth, and
+  `elektron-net/doc-elektron/CHANGELOG-stoic-awakening-retirement.md` for
+  why/when it retires. Because the current chain tip is still well inside
+  this window, this isn't an edge case -- it affects the *majority* of
+  currently-existing mainnet header history, not just early blocks.
+  Implemented in `Blockchain.get_expected_target()`, used by both
+  `verify_chunk()` (bulk header-chunk sync) and `can_connect()`
+  (single-header sync/tip-following); tests in `tests/test_blockchain.py`
+  (`TestStoicAwakeningDifficulty`).
+- **Not fixed / known follow-up:** `chainwork_of_header_at_height()` /
+  `get_chainwork()` (used to pick between competing valid header chains on a
+  reorg, not for header validation itself) still assume uniform difficulty
+  across a whole 2016-block chunk, which undercounts/overcounts real work
+  for chunks inside the Stoic Awakening window. Doesn't affect normal
+  single-chain sync; only matters if this client ever needs to resolve a
+  fork/reorg while still inside the window.
+- **This is not Electrum-specific.** Any wallet doing independent SPV
+  header verification for Elektron Net needs this same logic, most notably
+  the Stoic Awakening escape, which has no equivalent in stock Bitcoin
+  Core-derived difficulty code. Documented for other wallet implementers in
+  `elektron-net/doc-elektron/guideline-spv-header-difficulty-verification.md`.
+
 ## Branding
 
 Display name is "Elektron Electrum" throughout (window titles, About
