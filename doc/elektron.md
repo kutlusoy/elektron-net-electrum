@@ -260,6 +260,18 @@ Android, AppImage, source tarball) to one GitHub Release per tag.
   don't assume there will only ever be one; the dict already supports
   multiple entries (see the real Bitcoin-mainnet dict this replaced, which
   had three).
+  **Roadmap note: this is an infrastructure gap, not a wallet code gap.**
+  `electrs` (the Electrum-protocol server this wallet connects to) has no
+  Lightning functionality at all -- it only serves blockchain-query
+  requests (address history, balances, header sync). A trampoline/routing
+  node needs a *separate* real Lightning node implementation (e.g. Core
+  Lightning, LND, or Eclair) running against an Elektron Net full node
+  (`elektron-net`, not `electrs`), publicly reachable, with real channels
+  and liquidity to be useful as a routing hop. That's a deployment task
+  for this project's infrastructure (see `elektron-net-stack`, which
+  already hosts `electrs`/`mempool`/etc. and would be the natural place
+  to add it), not something fixable from the wallet side -- the wallet
+  side is just the one-line dict entry above, once such a node exists.
 - **Testnet/regtest/signet chain parameters:** only `BitcoinMainnet` has
   been forked so far; `BitcoinTestnet` and friends still carry real Bitcoin
   testnet parameters. Selecting `--testnet` today produces a client that
