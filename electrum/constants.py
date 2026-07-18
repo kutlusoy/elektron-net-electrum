@@ -162,9 +162,18 @@ class BitcoinMainnet(AbstractNet):
     # MUST default to Bech32 receive addresses and warn on legacy import;
     # not yet implemented here, tracked in doc/elektron.md.
     SEGWIT_HRP = "be"
-    # No dedicated BOLT11 HRP has been decided yet for Elektron Net Lightning
-    # (guideline-wallet-integration.md SS6 Phase 0, open item); Lightning is out
-    # of scope for this milestone, so this is a placeholder, not a decision.
+    # BOLT11 HRP: finalized, matches SEGWIT_HRP by design, not a placeholder.
+    # BOLT11 spec (bolts/11-payment-encoding.md): "prefix: ln + BIP-0173
+    # currency prefix" -- i.e. the invoice HRP is always "ln" plus the
+    # chain's own bech32 address HRP. Real precedent confirms this is the
+    # convention actually followed, not just the literal spec text: Bitcoin
+    # mainnet uses bc/bc (address/invoice), testnet tb/tb, regtest bcrt/bcrt
+    # -- address HRP and invoice suffix are identical on every established
+    # chain (only signet deliberately deviates, tbs vs tb, to disambiguate
+    # from testnet since both otherwise share the same address HRP -- not
+    # applicable here, Elektron Net's "be" is already unique). So "be" is
+    # the correct, final Elektron Net mainnet BOLT11 HRP (full invoice
+    # prefix: "lnbe"), not an undecided stand-in. See doc/elektron.md.
     BOLT11_HRP = SEGWIT_HRP
     GENESIS = "00000006b054338443f1a5d5534df21eab0d13232028158ae198edbb169f9dad"
     # DEFAULT_PORTS is Electrum's generic fallback (upstream default 't'/'s'

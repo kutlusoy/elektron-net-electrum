@@ -241,10 +241,22 @@ Android, AppImage, source tarball) to one GitHub Release per tag.
   version bytes instead of its own Ltub/Ltpv -- see
   `pooler/electrum-ltc#52`, open since 2018). Decision: match that
   precedent and leave this alone.
-- **BOLT11 HRP / Lightning (guideline SS3.3, Phase 3):** undecided upstream;
-  `BOLT11_HRP` here is a placeholder equal to `SEGWIT_HRP`. No Lightning
-  routing/trampoline nodes exist on Elektron Net yet, so this is out of
-  scope for this milestone regardless.
+- **BOLT11 HRP / Lightning: finalized (2026-07-18), not open anymore.**
+  `BOLT11_HRP = SEGWIT_HRP = "be"` (full invoice prefix `lnbe`). BOLT11
+  spec: "prefix: `ln` + BIP-0173 currency prefix" -- i.e. the invoice HRP
+  is always the chain's own bech32 address HRP with `ln` prepended. Real
+  precedent confirms this is actually followed, not just spec text:
+  Bitcoin mainnet is `bc`/`bc` (address/invoice), testnet `tb`/`tb`,
+  regtest `bcrt`/`bcrt` -- address and invoice HRP match on every
+  established chain (signet's `tbs` vs `tb` is a deliberate one-off
+  disambiguation, needed only because signet otherwise shares testnet's
+  address HRP -- not applicable here, since `be` is already unique to
+  Elektron Net). No further decision needed; `elektron-net-electrum`'s
+  `constants.py` documents the same reasoning inline. Still out of scope
+  functionally until a real Lightning routing/trampoline node exists on
+  Elektron Net (see `elektron-net`'s
+  `doc-elektron/guideline-lightning-node-deployment.md`), but the HRP
+  itself is decided.
 - **`TRAMPOLINE_NODES_MAINNET` (`electrum/trampoline.py`) is intentionally
   empty**, for the same reason as `fallback_lnnodes.json`: upstream's
   hardcoded entries (ACINQ, `lightning.electrum.org`, hodlisterco) are all

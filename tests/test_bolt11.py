@@ -20,11 +20,13 @@ CONVERSION_RATE=1200
 PRIVKEY=unhexlify('e126f68f7eafcc8b74f54d269fe206be715000f94dac067d1c04a8ca3b2db734')
 PUBKEY=unhexlify('03e7156ae33b0a208d0744199163177e909e80176e55d97a2f221ede0f934dd9ad')
 
-# Elektron Net has no dedicated BOLT11 HRP decided yet
-# (guideline-wallet-integration.md SS6 Phase 0, placeholder BOLT11_HRP='be' in
-# constants.py) and no Lightning network exists on it yet -- see
-# doc/elektron.md Open Items. Tests below decode real Bitcoin-mainnet BOLT11
-# invoices (HRP 'bc') against the default (Elektron) net.
+# Elektron Net's BOLT11 HRP is finalized as 'be' (see constants.py and
+# doc/elektron.md), matching its own bech32 address HRP -- but no
+# Lightning network exists on it yet, see doc/elektron.md Open Items.
+# Tests below decode real Bitcoin-mainnet BOLT11 invoices (HRP 'bc')
+# against the default (Elektron) net, so they'd fail regardless of what
+# our own HRP is -- skipped for that reason, not because our HRP is
+# undecided.
 _BOLT11_HRP_SKIP_REASON = "Uses real Bitcoin-mainnet BOLT11 invoices (HRP 'bc'); see comment above."
 
 
