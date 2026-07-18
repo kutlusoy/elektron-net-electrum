@@ -1,6 +1,7 @@
 import shutil
 import tempfile
 import os
+import unittest.mock
 
 from electrum import constants, blockchain
 from electrum.simple_config import SimpleConfig
@@ -508,22 +509,18 @@ class TestStoicAwakeningDifficulty(ElectrumTestCase):
         self.assertEqual(0x1f7fffff, Blockchain.target_to_bits(blockchain.MAX_TARGET))
         self.assertEqual(528482303, 0x1f7fffff)
 
-    def test_boundary_height_uses_classic_retarget(self):
-        # height % CHUNK_SIZE == 0 must go through get_target(), regardless
-        # of the Stoic Awakening window. get_target(0) needs real headers at
-        # heights 0 and CHUNK_SIZE-1 on disk to compute a chunk-1 target.
-        first = self._mk_header(0, timestamp=1_000_000, bits=0x1e0fffff)
-        self.chain.save_header(first)
-        for h in range(1, blockchain.CHUNK_SIZE - 1):
-            self.chain.save_header(self._mk_header(h, timestamp=1_000_000 + h * 60, bits=0x1e0fffff))
-        last = self._mk_header(
-            blockchain.CHUNK_SIZE - 1,
-            timestamp=1_000_000 + (blockchain.CHUNK_SIZE - 1) * 60,
-            bits=0x1e0fffff)
-        self.chain.save_header(last)
-        header = self._mk_header(blockchain.CHUNK_SIZE, timestamp=0, bits=0)
+    def test_boundary_height_within_stoic_window_trusts_header_bits(self):
+        # height % CHUNK_SIZE == 0 while inside the Stoic Awakening window
+        # (e.g. CHUNK_SIZE itself, 2016 < 150000) now trusts the boundary
+        # header's own bits (see test_stoic_boundary_* above for why: the
+        # classic retarget formula was proven, against real chain data, not
+        # to reproduce the real network's boundary difficulty). This
+        # supersedes the old assumption that *every* boundary height goes
+        # through get_target() unconditionally -- that only holds once the
+        # window ends, see test_post_stoic_boundary_still_uses_classic_retarget.
+        header = self._mk_header(blockchain.CHUNK_SIZE, timestamp=0, bits=0x1e0fffff)
         target = self.chain.get_expected_target(blockchain.CHUNK_SIZE, header)
-        self.assertEqual(self.chain.get_target(0), target)
+        self.assertEqual(Blockchain.bits_to_target(0x1e0fffff), target)
 
     def test_non_boundary_no_escape_carries_forward_prev_bits(self):
         prev = self._mk_header(0, timestamp=1_000_000, bits=0x1e0fffff)
@@ -614,3 +611,63 @@ class TestStoicAwakeningDifficulty(ElectrumTestCase):
         genesis = self._mk_header(0, timestamp=0, bits=0x1d7fffff)
         target = self.chain.get_expected_target(0, genesis)
         self.assertEqual(Blockchain.bits_to_target(0x1d7fffff), target)
+
+    def test_stoic_boundary_trusts_real_harder_than_escape_bits(self):
+        # Real observed data (height 10080, cross-checked against a live
+        # node and the block explorer, see doc/elektron.md): block 10079
+        # (last block of the old chunk) was an escape/min-difficulty block
+        # (bits=0x1f7fffff), yet the real next block (10080, a retarget
+        # boundary: 10080 == 5*CHUNK_SIZE) had a genuinely *harder* bits
+        # value (0x1e7c9c07). Applying the classic Bitcoin-style retarget
+        # formula (get_target()) to an escape-block baseline can only ever
+        # yield powLimit again -- it can never predict this real value.
+        # get_expected_target() must therefore trust the boundary header's
+        # own claimed bits during the Stoic Awakening window instead of
+        # computing an "expected" value via get_target().
+        boundary_height = 5 * blockchain.CHUNK_SIZE
+        real_bits = 0x1e7c9c07
+        header = self._mk_header(boundary_height, timestamp=1781706752, bits=real_bits)
+        target = self.chain.get_expected_target(boundary_height, header)
+        self.assertEqual(Blockchain.bits_to_target(real_bits), target)
+        self.assertNotEqual(blockchain.MAX_TARGET, target)
+        self.assertLess(target, blockchain.MAX_TARGET)
+
+    def test_stoic_boundary_accepts_escape_bits_too(self):
+        # A boundary header claiming powLimit itself (the easiest still-
+        # permitted value) must still be accepted.
+        boundary_height = 3 * blockchain.CHUNK_SIZE
+        header = self._mk_header(boundary_height, timestamp=0, bits=self.POWLIMIT_BITS)
+        target = self.chain.get_expected_target(boundary_height, header)
+        self.assertEqual(blockchain.MAX_TARGET, target)
+
+    def test_stoic_boundary_rejects_bits_easier_than_powlimit(self):
+        # A header claiming to be easier than the network's own absolute
+        # floor (MAX_TARGET/powLimit) must still be rejected -- trusting
+        # the header's claimed bits is bounded, not unconditional.
+        boundary_height = 3 * blockchain.CHUNK_SIZE
+        too_easy_bits = 0x207fffff  # bitsN=0x20 > MAX_TARGET's bitsN=0x1f
+        header = self._mk_header(boundary_height, timestamp=0, bits=too_easy_bits)
+        with self.assertRaises(InvalidHeader):
+            self.chain.get_expected_target(boundary_height, header)
+
+    def test_post_stoic_boundary_still_uses_classic_retarget(self):
+        # Outside the Stoic Awakening window, boundaries must still go
+        # through the classic retarget computation (get_target()), not the
+        # trust-the-header shortcut. Temporarily lower END_HEIGHT so the
+        # test doesn't need to persist ~150000 headers to reach it.
+        with unittest.mock.patch.object(
+                blockchain, 'STOIC_AWAKENING_END_HEIGHT', blockchain.STOIC_AWAKENING_START_HEIGHT):
+            boundary_height = blockchain.CHUNK_SIZE
+            first = self._mk_header(0, timestamp=5_000_000, bits=0x1e0fffff)
+            self.chain.save_header(first)
+            for h in range(1, boundary_height - 1):
+                self.chain.save_header(self._mk_header(h, timestamp=5_000_000 + h * 60, bits=0x1e0fffff))
+            last = self._mk_header(
+                boundary_height - 1,
+                timestamp=5_000_000 + (blockchain.CHUNK_SIZE - 1) * 60,
+                bits=0x1e0fffff)
+            self.chain.save_header(last)
+            header = self._mk_header(boundary_height, timestamp=0, bits=0)
+            target = self.chain.get_expected_target(boundary_height, header)
+            expected = self.chain.get_target(boundary_height // blockchain.CHUNK_SIZE - 1)
+        self.assertEqual(expected, target)
