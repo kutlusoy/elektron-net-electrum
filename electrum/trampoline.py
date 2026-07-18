@@ -36,6 +36,21 @@ _logger = get_logger(__name__)
 # all"); leaving stale Bitcoin-mainnet entries here would just make the
 # channel-opening flow suggest peers guaranteed to fail. See
 # suggest_peer() in lnworker.py, which handles this being empty.
+#
+# Once a real Elektron Net trampoline/routing node exists, add it here,
+# e.g. (this is just a format example, not a real node -- fill in the
+# real host/port/pubkey and pick a real display name):
+#
+# TRAMPOLINE_NODES_MAINNET = {
+#     'Elektron Net trampoline': LNPeerAddr(
+#         host='lightning.elektron-net.org',
+#         port=9735,
+#         pubkey=bytes.fromhex('0000000000000000000000000000000000000000000000000000000000000000')),
+# }
+#
+# Multiple entries are supported (a random one gets suggested to the
+# user, see suggest_peer() in lnworker.py) -- don't assume there'll only
+# ever be one, add further nodes as new dict entries the same way.
 TRAMPOLINE_NODES_MAINNET = {}
 
 TRAMPOLINE_NODES_TESTNET = {
