@@ -587,3 +587,30 @@ class TestStoicAwakeningDifficulty(ElectrumTestCase):
         # sanity: height 1 is within [1, 150000), i.e. stoic-active
         self.assertTrue(
             blockchain.STOIC_AWAKENING_START_HEIGHT <= 1 < blockchain.STOIC_AWAKENING_END_HEIGHT)
+
+    def test_genesis_uses_its_own_bits_not_max_target(self):
+        # Real Elektron Net genesis has bits=494927871 (0x1d7fffff), a real
+        # (harder-than-minimum) difficulty, unlike Bitcoin's own genesis
+        # which coincidentally was mined at exactly powLimit/MAX_TARGET
+        # (0x1f7fffff / 528482303). height % CHUNK_SIZE == 0 is true for
+        # height 0 too, so without an explicit height==0 special case,
+        # get_expected_target() would wrongly derive MAX_TARGET via
+        # get_target(-1) instead of trusting the genesis header's own bits,
+        # causing every chunk-0 verify_chunk() call to fail forever (this
+        # was observed live: "bits mismatch: 528482303 vs 494927871").
+        genesis_bits = 0x1d7fffff
+        self.assertEqual(494927871, genesis_bits)
+        genesis = self._mk_header(0, timestamp=0, bits=genesis_bits)
+        target = self.chain.get_expected_target(0, genesis)
+        self.assertEqual(Blockchain.bits_to_target(genesis_bits), target)
+        self.assertNotEqual(blockchain.MAX_TARGET, target)
+
+    def test_genesis_special_case_does_not_require_persisted_headers(self):
+        # get_expected_target(0, ...) must not call get_target(-1) (which
+        # would try to read_header() a nonexistent height -1 chunk-end
+        # header and raise). Calling it on a chain with zero persisted
+        # headers (as happens on a completely fresh install syncing
+        # chunk 0 for the first time) must succeed.
+        genesis = self._mk_header(0, timestamp=0, bits=0x1d7fffff)
+        target = self.chain.get_expected_target(0, genesis)
+        self.assertEqual(Blockchain.bits_to_target(0x1d7fffff), target)

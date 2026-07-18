@@ -599,6 +599,20 @@ class Blockchain(Logger):
         """
         if constants.net.TESTNET:
             return 0
+        if height == 0:
+            # Genesis's difficulty is whatever was hardcoded when the chain
+            # was created (Elektron Net's genesis was NOT mined at
+            # MAX_TARGET/powLimit, unlike Bitcoin's -- real bits observed:
+            # 494927871 / 0x1d7fffff, not 0x1f7fffff). Genesis is
+            # authenticated by its hash matching constants.net.GENESIS
+            # (wired via verify_header's expected_header_hash, and
+            # separately in can_connect()'s own height==0 special case),
+            # not by an independently-computed difficulty target, so trust
+            # the header's own bits here rather than deriving an "expected"
+            # value from get_target(-1) (which would be MAX_TARGET -- only
+            # coincidentally correct for Bitcoin, where genesis really was
+            # mined at min difficulty).
+            return self.bits_to_target(header['bits'])
         if height % CHUNK_SIZE == 0:
             return self.get_target(height // CHUNK_SIZE - 1)
 
