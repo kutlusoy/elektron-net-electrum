@@ -614,6 +614,31 @@ class Blockchain(Logger):
             # mined at min difficulty).
             return self.bits_to_target(header['bits'])
         if height % CHUNK_SIZE == 0:
+            stoic_active_boundary = STOIC_AWAKENING_START_HEIGHT <= height < STOIC_AWAKENING_END_HEIGHT
+            if stoic_active_boundary:
+                # Simplified rule for retarget boundaries while the Stoic
+                # Awakening min-difficulty escape is active: a real observed
+                # boundary (height 10080, cross-checked against a live node
+                # and the block explorer) proved the classic
+                # Bitcoin-style retarget formula (get_target(), which mirrors
+                # elektron-net's CalculateNextWorkRequired() line-for-line)
+                # does NOT reproduce the real network's difficulty here --
+                # applying that formula to an escape-block (bits==powLimit)
+                # baseline can mathematically only ever yield powLimit again,
+                # yet the real chain's next block had a genuinely harder
+                # target. The exact algorithm the deployed node actually uses
+                # for this case could not be reverse-engineered from
+                # src/pow.cpp alone. Rather than risk being wrong again on a
+                # future boundary, trust the header's own claimed bits here
+                # (same principle already applied to non-boundary escape
+                # blocks below), bounded so it can't claim to be easier than
+                # the network's own absolute floor (MAX_TARGET/powLimit).
+                # Real proof-of-work against that claimed target is still
+                # enforced by verify_header(). See doc/elektron.md.
+                target = self.bits_to_target(header['bits'])
+                if target > MAX_TARGET:
+                    raise InvalidHeader(f"target exceeds powLimit: {target} vs {MAX_TARGET}")
+                return target
             return self.get_target(height // CHUNK_SIZE - 1)
 
         def _get_header(h: int) -> dict:

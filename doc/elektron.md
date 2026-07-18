@@ -102,6 +102,58 @@ trying to validate height 1). Fixed:
   `verify_chunk()` (bulk header-chunk sync) and `can_connect()`
   (single-header sync/tip-following); tests in `tests/test_blockchain.py`
   (`TestStoicAwakeningDifficulty`).
+- **Chunk-boundary retarget within the Stoic Awakening window: trust the
+  header's own bits, don't recompute.** The classic Bitcoin-style retarget
+  formula (`get_target()`, ported line-for-line from `elektron-net`'s
+  `CalculateNextWorkRequired()`) was applied at every `height % CHUNK_SIZE
+  == 0` boundary regardless of Stoic Awakening state, on the assumption
+  (stated in `elektron-net/src/pow.cpp`, see below) that boundaries are
+  always classic-retarget, unaffected. This was proven wrong against real
+  network data: at height 10080 (a boundary, `10080 == 5*CHUNK_SIZE`), the
+  real chain's block 10079 (last block of the old chunk) was an
+  escape/min-difficulty block (`bits=0x1f7fffff`), yet the real block 10080
+  had a genuinely *harder* bits value (`bits=0x1e7c9c07`) -- cross-checked
+  independently via a live Elektron Net node's local header data and the
+  `mempool.elektron-net.org` block explorer, both agreeing exactly (hash,
+  prev_hash, timestamp, bits, nonce). Applying `CalculateNextWorkRequired()`
+  with an escape-block (`bits==powLimit`) baseline can mathematically only
+  ever yield `powLimit` again (any timespan ratio >= 1 gets clamped back to
+  the ceiling) -- it can never predict a harder value. This means the
+  deployed node's actual boundary-difficulty algorithm differs from what's
+  readable in this checkout of `elektron-net/src/pow.cpp` in some way that
+  couldn't be reverse-engineered from source alone (possibly a version
+  difference, or logic elsewhere not yet located).
+
+  Rather than risk being wrong again on some future boundary, chunk
+  boundaries inside `[STOIC_AWAKENING_START_HEIGHT,
+  STOIC_AWAKENING_END_HEIGHT)` now trust the boundary header's own claimed
+  `bits` directly (same principle already used for non-boundary escape
+  blocks), bounded so it can't claim to be easier than the network's own
+  absolute floor (`target > MAX_TARGET` is rejected). Real proof-of-work
+  against the claimed target is still enforced by `verify_header()`. This
+  is a deliberate simplification, not an oversight: hash-chain linkage and
+  real-PoW-effort are still fully verified; only the specific "does this
+  boundary's claimed difficulty match an independently *computed* expected
+  value" check is relaxed, for the window where that computation has been
+  shown unreliable. Boundaries outside the window still use the classic
+  `get_target()` computation unchanged. See
+  `tests/test_blockchain.py::TestStoicAwakeningDifficulty` (the
+  `test_stoic_boundary_*` and `test_post_stoic_boundary_*` tests) for the
+  exact real-world numbers and the boundary behavior this locks in.
+
+  `STOIC_AWAKENING_END_HEIGHT = 150000` is confirmed active on
+  `elektron-net`'s `main` branch: `chainparams.cpp` sets
+  `consensus.StoicAwakeningEndHeight = 150000`, gated into `pow.cpp`'s
+  `GetNextWorkRequired()`/`PermittedDifficultyTransition()` via a
+  `stoicAwakeningActive` check (`... && (StoicAwakeningEndHeight == -1 ||
+  height < StoicAwakeningEndHeight)`). This end-height gating only affects
+  *whether the min-difficulty escape applies at all* (the non-boundary
+  carry-forward/escape logic, already correctly implemented and unaffected
+  by this whole investigation) -- it does not change
+  `CalculateNextWorkRequired()`, the classic-retarget function used at
+  chunk boundaries, which is identical to what's described above. So this
+  doesn't resolve or explain the height-10080 boundary discrepancy; the
+  boundary-trust-the-header relaxation above is still the fix.
 - **Not fixed / known follow-up:** `chainwork_of_header_at_height()` /
   `get_chainwork()` (used to pick between competing valid header chains on a
   reorg, not for header validation itself) still assume uniform difficulty
