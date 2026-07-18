@@ -18,6 +18,16 @@ cmdline_name = os.environ.get("ELECTRUM_CMDLINE_NAME")
 if not cmdline_name:
     raise Exception('no name')
 
+# Name of the exe placed inside the installer (and thus inside $INSTDIR
+# after installation) -- deliberately NOT versioned, unlike cmdline_name
+# above (used for the standalone/portable direct-download exes), so that
+# installing a newer version overwrites the same file instead of leaving
+# old-versioned exes behind in the install directory. See electrum.nsi,
+# which references this same name for shortcuts/file associations.
+installed_exe_name = os.environ.get("ELECTRUM_INSTALLED_EXE_NAME")
+if not installed_exe_name:
+    raise Exception('no installed exe name')
+
 
 # see https://github.com/pyinstaller/pyinstaller/issues/2005
 hiddenimports = []
@@ -144,7 +154,7 @@ exe_inside_setup_noconsole = EXE(
     pyz,
     a.scripts,
     exclude_binaries=True,
-    name=os.path.join("build", "pyi.win32", PYPKG, f"{cmdline_name}.exe"),
+    name=os.path.join("build", "pyi.win32", PYPKG, f"{installed_exe_name}.exe"),
     debug=False,
     strip=None,
     upx=False,
@@ -155,7 +165,7 @@ exe_inside_setup_console = EXE(
     pyz,
     a.scripts,
     exclude_binaries=True,
-    name=os.path.join("build", "pyi.win32", PYPKG, f"{cmdline_name}-debug.exe"),
+    name=os.path.join("build", "pyi.win32", PYPKG, f"{installed_exe_name}-debug.exe"),
     debug=False,
     strip=None,
     upx=False,

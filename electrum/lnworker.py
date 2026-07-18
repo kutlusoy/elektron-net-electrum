@@ -2336,7 +2336,12 @@ class LNWallet(Logger):
         if not self.uses_trampoline():
             return self.lnrater.suggest_peer()
         else:
-            return random.choice(list(hardcoded_trampoline_nodes().values())).pubkey
+            candidates = list(hardcoded_trampoline_nodes().values())
+            if not candidates:
+                # e.g. Elektron Net mainnet, which has no hardcoded
+                # trampoline nodes yet -- see trampoline.py
+                return None
+            return random.choice(candidates).pubkey
 
     def suggest_payment_splits(
         self,
