@@ -20,13 +20,18 @@ from electrum._vendor.distutils.version import StrictVersion
 
 
 class UpdateCheck(QDialog, Logger):
-    url = "https://electrum.org/version"
-    download_url = "https://electrum.org/#download"
+    # Elektron Net fork: point at our own domain/releases instead of
+    # upstream Electrum's. See doc/update-checking.md.
+    url = "https://elektron-net.org/version"
+    download_url = constants.GIT_REPO_URL + "/releases"
 
-    VERSION_ANNOUNCEMENT_SIGNING_KEYS = (
-        "13xjmVAB1EATPP8RshTE8S8sNwwSUM9p1P",  # ThomasV (since 3.3.4)
-        "1Nxgk6NTooV4qZsX5fdqQwrLjYcsQZAfTg",  # ghost43 (since 4.1.2)
-    )
+    # No Elektron Net signing key has been set up yet for signed version
+    # announcements (see doc/update-checking.md) -- deliberately left empty
+    # rather than trusting upstream Electrum's keys or an unsigned response.
+    # With this empty, get_update_info() always ends up in its "no valid
+    # signature" branch and the check fails safely ("Update check failed")
+    # instead of silently succeeding against a spoofable/unsigned reply.
+    VERSION_ANNOUNCEMENT_SIGNING_KEYS: tuple = ()
 
     def __init__(self, *, latest_version=None):
         QDialog.__init__(self)
@@ -88,7 +93,7 @@ class UpdateCheck(QDialog, Logger):
                 self.detail_label.setText(_("You can download the new version from {}.").format(url))
             else:
                 self.heading_label.setText('<h2>' + _("Already up to date") + '</h2>')
-                self.detail_label.setText(_("You are already on the latest version of Electrum."))
+                self.detail_label.setText(_("You are already on the latest version of Elektron Electrum."))
         else:
             self.heading_label.setText('<h2>' + _("Checking for updates...") + '</h2>')
             self.detail_label.setText(_("Please wait while Electrum checks for available updates."))
