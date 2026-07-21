@@ -3,5 +3,10 @@
         "pruning": "-",
         "t": "50002",
         "version": "1.4"
+    },
+    "electrs2.elektron-net.org": {
+        "pruning": "-",
+        "t": "50002",
+        "version": "1.4"
     }
 }
